@@ -22,7 +22,7 @@ describe("UtilityClaim", function () {
         poseidon = await buildPoseidon()
     })
 
-    function calculateClaimLeaf(utility, collection, token, wallet) {
+    function calculateSnapshotLeaf(utility, collection, token, wallet) {
         const tokenBytes = ethers.utils.arrayify(ethers.BigNumber.from(token)).leftPad(32)
         const leafCollection = ethers.BigNumber.from(collection).toBigInt()
         const leafToken1 = ethers.BigNumber.from(tokenBytes.slice(0, 16)).toBigInt()
@@ -31,34 +31,34 @@ describe("UtilityClaim", function () {
         return poseidon.F.toString(poseidon([leafCollection, leafToken1, leafToken2, leafAddress]))
     }
 
-    function calculateClaimTree(claimLeaf1 = '0', claimLeaf2 = '0', claimLeaf3 = '0', claimLeaf4 = '0') {
-        const node1 = poseidon.F.toString(poseidon([ethers.BigNumber.from(claimLeaf1).toBigInt(), ethers.BigNumber.from(claimLeaf2).toBigInt()]))
-        const node2 = poseidon.F.toString(poseidon([ethers.BigNumber.from(claimLeaf3).toBigInt(), ethers.BigNumber.from(claimLeaf4).toBigInt()]))
+    function calculateSnapshotTree(snapshotLeaf1 = '0', snapshotLeaf2 = '0', snaphotLeaf3 = '0', snapshotLeaf4 = '0') {
+        const node1 = poseidon.F.toString(poseidon([ethers.BigNumber.from(snapshotLeaf1).toBigInt(), ethers.BigNumber.from(snapshotLeaf2).toBigInt()]))
+        const node2 = poseidon.F.toString(poseidon([ethers.BigNumber.from(snaphotLeaf3).toBigInt(), ethers.BigNumber.from(snapshotLeaf4).toBigInt()]))
         const root = poseidon.F.toString(poseidon([ethers.BigNumber.from(node1).toBigInt(), ethers.BigNumber.from(node2).toBigInt()]))
         return {
             root,
             nodes: [node1, node2],
-            leaves: [claimLeaf1, claimLeaf2, claimLeaf3, claimLeaf4]
+            leaves: [snapshotLeaf1, snapshotLeaf2, snaphotLeaf3, snapshotLeaf4]
         }
     }
 
-    function calculateClaimTreePath(claimTree, leafNumber) {
+    function calculateSnapshotPath(snapshotTree, leafNumber) {
         switch (leafNumber) {
             case 1: return {
                 positions: [0, 0],
-                elements: [claimTree.leaves[1], claimTree.nodes[1]]
+                elements: [snapshotTree.leaves[1], snapshotTree.nodes[1]]
             }
             case 2: return {
                 positions: [1, 0],
-                elements: [claimTree.leaves[0], claimTree.nodes[1]]
+                elements: [snapshotTree.leaves[0], snapshotTree.nodes[1]]
             }
             case 3: return {
                 positions: [0, 1],
-                elements: [claimTree.leaves[3], claimTree.nodes[0]]
+                elements: [snapshotTree.leaves[3], snapshotTree.nodes[0]]
             }
             case 4: return {
                 positions: [1, 1],
-                elements: [claimTree.leaves[2], claimTree.nodes[0]]
+                elements: [snapshotTree.leaves[2], snapshotTree.nodes[0]]
             }
         }
     }
@@ -83,21 +83,21 @@ describe("UtilityClaim", function () {
         }
     }
 
-    async function claimUtility(utility, utilityStep, collection, token, claimSignature, claimTreePath) {
+    async function claimUtility(utility, utilityStep, collection, token, claimSignature, snapshotPath) {
         const witness = await circuit.calculateWitness({
-            utility: ethers.BigNumber.from(utility).toBigInt().toString(2).padStart(256, '0').split(''),
+            utility: splitNumber(ethers.BigNumber.from(utility).toBigInt(), 2, 128),
             utilityStep,
-            collection: ethers.BigNumber.from(collection).toBigInt().toString(2).padStart(160, '0').split(''),
-            token: ethers.BigNumber.from(token).toBigInt().toString(2).padStart(256, '0').split(''),
-            publicKey: ethers.BigNumber.from(claimSignature.publicKey).toBigInt().toString(2).padStart(512, '0').split(''),
-            signatureR: ethers.BigNumber.from(claimSignature.signatureR).toBigInt().toString(2).padStart(256, '0').split(''),
-            signatureS: ethers.BigNumber.from(claimSignature.signatureS).toBigInt().toString(2).padStart(256, '0').split(''),
-            claimTreePositions: claimTreePath.positions,
-            claimTreeElements: claimTreePath.elements
+            collection: ethers.BigNumber.from(collection).toBigInt(),
+            token: splitNumber(ethers.BigNumber.from(token).toBigInt(), 2, 128),
+            publicKey: splitNumber(ethers.BigNumber.from(claimSignature.publicKey).toBigInt(), 4, 128),
+            signatureR: splitNumber(ethers.BigNumber.from(claimSignature.signatureR).toBigInt(), 2, 128),
+            signatureS: splitNumber(ethers.BigNumber.from(claimSignature.signatureS).toBigInt(), 2, 128),
+            snapshotPathPositions: snapshotPath.positions,
+            snapshotPathElements: snapshotPath.elements
         }, true)
 
         return {
-            claimRoot: witness[1],
+            snapshotRoot: witness[1],
             claimCommitment: witness[2],
             claimNullifier: witness[3]
         }
@@ -125,6 +125,21 @@ describe("UtilityClaim", function () {
         return poseidon.F.toString(poseidon([nullifierUtilityStep, nullifierSignatureR1, nullifierSignatureR2]))
     }
 
+    function splitNumber(number, parts, bits) {
+        let mod = 1n;
+        for (let i = 0; i < bits; i++) {
+            mod = mod * 2n;
+        }
+
+        let splitNumber = [];
+        let remainder = number;
+        for (let i = 0; i < parts; i++) {
+            splitNumber.push(remainder % mod);
+            remainder = remainder / mod;
+        }
+        return splitNumber.reverse();
+    }
+
     it("UtilityClaim for events", async function () {
         this.timeout(60000000)
 
@@ -141,26 +156,26 @@ describe("UtilityClaim", function () {
         const wallet3 = ethers.Wallet.createRandom()
         const wallet4 = ethers.Wallet.createRandom()
 
-        const claimLeaf1 = calculateClaimLeaf(utility, collection, token1, wallet1)
-        const claimLeaf2 = calculateClaimLeaf(utility, collection, token2, wallet2)
-        const claimLeaf3 = calculateClaimLeaf(utility, collection, token3, wallet3)
-        const claimLeaf4 = calculateClaimLeaf(utility, collection, token4, wallet4)
-        const claimTree = calculateClaimTree(claimLeaf1, claimLeaf2, claimLeaf3, claimLeaf4);
+        const snapshotLeaf1 = calculateSnapshotLeaf(utility, collection, token1, wallet1)
+        const snapshotLeaf2 = calculateSnapshotLeaf(utility, collection, token2, wallet2)
+        const snapshotLeaf3 = calculateSnapshotLeaf(utility, collection, token3, wallet3)
+        const snapshotLeaf4 = calculateSnapshotLeaf(utility, collection, token4, wallet4)
+        const snapshotTree = calculateSnapshotTree(snapshotLeaf1, snapshotLeaf2, snapshotLeaf3, snapshotLeaf4);
 
         const claimSignature = await signUtilityClaim(utility, collection, token1, wallet1);
-        const claimTreePath = calculateClaimTreePath(claimTree, 1);
+        const snapshotPath = calculateSnapshotPath(snapshotTree, 1);
 
         const expectedEventCommitment = calculateClaimCommitment(utility, claimSignature);
         const expectedRegistrationNullifier = calculateClaimNullifier(1, claimSignature);
         const expectedEntranceNullifier = calculateClaimNullifier(2, claimSignature);
 
-        const registrationProof = await claimUtility(utility, 1, collection, token1, claimSignature, claimTreePath);
-        assert.equal(registrationProof.claimRoot, claimTree.root, 'The claim root from the registration proof must equal the root calculated from the leaves')
+        const registrationProof = await claimUtility(utility, 1, collection, token1, claimSignature, snapshotPath);
+        assert.equal(registrationProof.snapshotRoot, snapshotTree.root, 'The snapshot root from the registration proof must equal the root calculated from the leaves')
         assert.equal(registrationProof.claimCommitment, expectedEventCommitment, 'The registration proof commitment should match the expected value')
         assert.equal(registrationProof.claimNullifier, expectedRegistrationNullifier, 'The registration proof nullifier should match the expected value')
 
-        const entranceProof = await claimUtility(utility, 2, collection, token1, claimSignature, claimTreePath);
-        assert.equal(entranceProof.claimRoot, claimTree.root, 'The claim root from the entrance proof must equal the root calculated from the leaves')
+        const entranceProof = await claimUtility(utility, 2, collection, token1, claimSignature, snapshotPath);
+        assert.equal(entranceProof.snapshotRoot, snapshotTree.root, 'The snapshot root from the entrance proof must equal the root calculated from the leaves')
         assert.equal(entranceProof.claimCommitment, expectedEventCommitment, 'The entrance proof commitment should match the expected value')
         assert.equal(entranceProof.claimNullifier, expectedEntranceNullifier, 'The entrance proof nullifier should match the expected value')
     });

@@ -5,58 +5,75 @@ include "../lib/0xpark-ecdsa/ecdsa.circom";
 include "../lib/zk-identity/eth.circom";
 
 template UtilityClaim(treeDepth) {
-    signal input utility[256];
+    // public input
+    signal input utility[2];
     signal input utilityStep;
-    signal input collection[160];
-    signal input token[256];
-    signal input publicKey[512];
-    signal input signatureR[256];
-    signal input signatureS[256];
-    signal input claimTreePositions[treeDepth];
-    signal input claimTreeElements[treeDepth];
-    signal messageHash[256];
-    signal address;
-    signal claimLeaf;
-    signal output claimRoot;
+    
+    // private input
+    signal input collection;
+    signal input token[2];
+    signal input publicKey[4];
+    signal input signatureR[2];
+    signal input signatureS[2];
+    signal input snapshotPathPositions[treeDepth];
+    signal input snapshotPathElements[treeDepth];
+    
+    // output
+    signal output snapshotRoot;
     signal output claimCommitment;
     signal output claimNullifier;
 
+    // convert inputs to bits
+    component utilityBits = Nums2Bits(2, 128);
+    component collectionBits = Nums2Bits(1, 160);
+    component tokenBits = Nums2Bits(2, 128);
+    component publicKeyBits = Nums2Bits(4, 128);
+    component signatureRBits = Nums2Bits(2, 128);
+    component signatureSBits = Nums2Bits(2, 128);
+    for (var i = 0; i < 2; i++) utilityBits.numbers[i] <== utility[i];
+    collectionBits.numbers[0] <== collection;
+    for (var i = 0; i < 2; i++) tokenBits.numbers[i] <== token[i];
+    for (var i = 0; i < 4; i++) publicKeyBits.numbers[i] <== publicKey[i];
+    for (var i = 0; i < 2; i++) signatureRBits.numbers[i] <== signatureR[i];
+    for (var i = 0; i < 2; i++) signatureSBits.numbers[i] <== signatureS[i];    
+    
+    // calculate expected message hash
     component utilityClaimMessageHash = UtilityClaimMessageHash();
-    for (var i = 0; i < 256; i++) utilityClaimMessageHash.utility[i] <== utility[i];
-    for (var i = 0; i < 160; i++) utilityClaimMessageHash.collection[i] <== collection[i];
-    for (var i = 0; i < 256; i++) utilityClaimMessageHash.token[i] <== token[i];
-    for (var i = 0; i < 256; i++) messageHash[i] <== utilityClaimMessageHash.messageHash[i];
+    for (var i = 0; i < 256; i++) utilityClaimMessageHash.utility[i] <== utilityBits.bits[i];
+    for (var i = 0; i < 160; i++) utilityClaimMessageHash.collection[i] <== collectionBits.bits[i];
+    for (var i = 0; i < 256; i++) utilityClaimMessageHash.token[i] <== tokenBits.bits[i];
 
+    // verify signature is from public key and expected message hash
     component utilityClaimSignatureVerifier = UtilityClaimSignatureVerifier();
-    for (var i = 0; i < 512; i++) utilityClaimSignatureVerifier.publicKey[i] <== publicKey[i];
-    for (var i = 0; i < 256; i++) utilityClaimSignatureVerifier.signatureR[i] <== signatureR[i];
-    for (var i = 0; i < 256; i++) utilityClaimSignatureVerifier.signatureS[i] <== signatureS[i];
-    for (var i = 0; i < 256; i++) utilityClaimSignatureVerifier.messageHash[i] <== messageHash[i];
+    for (var i = 0; i < 512; i++) utilityClaimSignatureVerifier.publicKey[i] <== publicKeyBits.bits[i];
+    for (var i = 0; i < 256; i++) utilityClaimSignatureVerifier.signatureR[i] <== signatureRBits.bits[i];
+    for (var i = 0; i < 256; i++) utilityClaimSignatureVerifier.signatureS[i] <== signatureSBits.bits[i];
+    for (var i = 0; i < 256; i++) utilityClaimSignatureVerifier.messageHash[i] <== utilityClaimMessageHash.messageHash[i];
 
+    // calculate address from public key
     component pubkeyToAddress = PubkeyToAddress();
-    for (var i = 0; i < 512; i++) pubkeyToAddress.pubkeyBits[i] <== publicKey[511 - i];
-    address <== pubkeyToAddress.address;
+    for (var i = 0; i < 512; i++) pubkeyToAddress.pubkeyBits[i] <== publicKeyBits.bits[511 - i];
 
-    component utilityClaimLeaf = UtilityClaimLeaf();
-    for (var i = 0; i < 160; i++) utilityClaimLeaf.collection[i] <== collection[i];
-    for (var i = 0; i < 256; i++) utilityClaimLeaf.token[i] <== token[i];
-    utilityClaimLeaf.address <== address;
-    claimLeaf <== utilityClaimLeaf.claimLeaf;
+    // calculate snapshot leaf
+    component utilitySnapshotLeaf = UtilitySnapshotLeaf();
+    for (var i = 0; i < 160; i++) utilitySnapshotLeaf.collection[i] <== collectionBits.bits[i];
+    for (var i = 0; i < 256; i++) utilitySnapshotLeaf.token[i] <== tokenBits.bits[i];
+    utilitySnapshotLeaf.address <== pubkeyToAddress.address;
 
-    component utilityClaimRoot = UtilityClaimRoot(treeDepth);
-    utilityClaimRoot.claimLeaf <== utilityClaimLeaf.claimLeaf;
-    for (var i = 0; i < treeDepth; i++) utilityClaimRoot.claimTreePositions[i] <== claimTreePositions[i];
-    for (var i = 0; i < treeDepth; i++) utilityClaimRoot.claimTreeElements[i] <== claimTreeElements[i];
-    claimRoot <== utilityClaimRoot.claimRoot;
+    component utilitySnapshotRoot = UtilitySnapshotRoot(treeDepth);
+    utilitySnapshotRoot.snapshotLeaf <== utilitySnapshotLeaf.snapshotLeaf;
+    for (var i = 0; i < treeDepth; i++) utilitySnapshotRoot.snapshotPathPositions[i] <== snapshotPathPositions[i];
+    for (var i = 0; i < treeDepth; i++) utilitySnapshotRoot.snapshotPathElements[i] <== snapshotPathElements[i];
+    snapshotRoot <== utilitySnapshotRoot.snapshotRoot;
 
     component utilityClaimCommitment = UtilityClaimCommitment();
-    for (var i = 0; i < 256; i++) utilityClaimCommitment.utility[i] <== utility[i];
-    for (var i = 0; i < 256; i++) utilityClaimCommitment.signatureR[i] <== signatureR[i];
+    for (var i = 0; i < 256; i++) utilityClaimCommitment.utility[i] <== utilityBits.bits[i];
+    for (var i = 0; i < 256; i++) utilityClaimCommitment.signatureR[i] <== signatureRBits.bits[i];
     claimCommitment <== utilityClaimCommitment.claimCommitment;
 
     component utilityClaimNullifier = UtilityClaimNullifier();
     utilityClaimNullifier.utilityStep <== utilityStep;
-    for (var i = 0; i < 256; i++) utilityClaimNullifier.signatureR[i] <== signatureR[i];
+    for (var i = 0; i < 256; i++) utilityClaimNullifier.signatureR[i] <== signatureRBits.bits[i];
     claimNullifier <== utilityClaimNullifier.claimNullifier;
 }
 
@@ -161,11 +178,11 @@ template UtilityClaimSignatureVerifier() {
 }
 
 // Calculates the leaf of the NFT snapshot tree that is being claimed
-template UtilityClaimLeaf() {
+template UtilitySnapshotLeaf() {
     signal input collection[160];
     signal input token[256];
     signal input address;
-    signal output claimLeaf;
+    signal output snapshotLeaf;
 
     component collectionNum = Bits2Num(160);
     for (var i = 0; i < 160; i++) collectionNum.in[i] <== collection[159 - i];
@@ -175,21 +192,21 @@ template UtilityClaimLeaf() {
     for (var i = 0; i < 128; i++) tokenNum1.in[i] <== token[127 - i];
     for (var i = 0; i < 128; i++) tokenNum2.in[i] <== token[255 - i];
 
-    component claimLeafPoseidon = Poseidon(4);
-    claimLeafPoseidon.inputs[0] <== collectionNum.out;
-    claimLeafPoseidon.inputs[1] <== tokenNum1.out;
-    claimLeafPoseidon.inputs[2] <== tokenNum2.out;
-    claimLeafPoseidon.inputs[3] <== address;
-    claimLeaf <== claimLeafPoseidon.out;
+    component snapshotLeafPoseidon = Poseidon(4);
+    snapshotLeafPoseidon.inputs[0] <== collectionNum.out;
+    snapshotLeafPoseidon.inputs[1] <== tokenNum1.out;
+    snapshotLeafPoseidon.inputs[2] <== tokenNum2.out;
+    snapshotLeafPoseidon.inputs[3] <== address;
+    snapshotLeaf <== snapshotLeafPoseidon.out;
 }
 
 // Calculates the root of the NFT snapshot tree that is being claimed
 // This root must later be matched to the actual root
-template UtilityClaimRoot(treeDepth) {
-    signal input claimLeaf;
-    signal input claimTreePositions[treeDepth];
-    signal input claimTreeElements[treeDepth];
-    signal output claimRoot;
+template UtilitySnapshotRoot(treeDepth) {
+    signal input snapshotLeaf;
+    signal input snapshotPathPositions[treeDepth];
+    signal input snapshotPathElements[treeDepth];
+    signal output snapshotRoot;
 
     component hashes[treeDepth];
     component hashInputs[treeDepth];
@@ -197,18 +214,18 @@ template UtilityClaimRoot(treeDepth) {
     for (var i = 0; i < treeDepth; i++) {
         if (i == 0) {
             hashInputs[0] = Switcher();
-            hashInputs[0].sel <== claimTreePositions[0];
-            hashInputs[0].L <== claimLeaf;
-            hashInputs[0].R <== claimTreeElements[0];
+            hashInputs[0].sel <== snapshotPathPositions[0];
+            hashInputs[0].L <== snapshotLeaf;
+            hashInputs[0].R <== snapshotPathElements[0];
 
             hashes[0] = Poseidon(2);
             hashes[0].inputs[0] <== hashInputs[0].outL;
             hashes[0].inputs[1] <== hashInputs[0].outR;
         } else {
             hashInputs[i] = Switcher();
-            hashInputs[i].sel <== claimTreePositions[i];
+            hashInputs[i].sel <== snapshotPathPositions[i];
             hashInputs[i].L <== hashes[i - 1].out;
-            hashInputs[i].R <== claimTreeElements[i];
+            hashInputs[i].R <== snapshotPathElements[i];
 
             hashes[i] = Poseidon(2);
             hashes[i].inputs[0] <== hashInputs[i].outL;
@@ -216,7 +233,7 @@ template UtilityClaimRoot(treeDepth) {
         }
     }
 
-    claimRoot <== hashes[treeDepth - 1].out;
+    snapshotRoot <== hashes[treeDepth - 1].out;
 }
 
 // Calculates the commitment for the utility claim, remains the same for all steps
@@ -261,6 +278,19 @@ template UtilityClaimNullifier() {
     claimNullifier <== claimNullifierPoseidon.out;
 }
 
+template Nums2Bits(numberCount, bitCount) {
+    signal input numbers[numberCount];
+    signal output bits[numberCount * bitCount];
+
+    component numberBits[numberCount];
+    for (var i = 0; i < numberCount; i++) {
+        numberBits[i] = Num2Bits(bitCount);
+        numberBits[i].in <== numbers[i];
+        for (var j = 0; j < bitCount; j++) {
+            bits[i*bitCount + j] <== numberBits[i].out[bitCount - 1 - j];
+        }
+    }
+}
 
 // TODO fixed tree depth of 2 for now
-component main = UtilityClaim(2);
+component main {public [utility, utilityStep]} = UtilityClaim(2);
