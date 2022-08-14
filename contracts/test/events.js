@@ -2,6 +2,7 @@ const {buildPoseidon} = require("circomlibjs")
 const {ethers} = require("hardhat")
 const {groth16} = require("snarkjs")
 const {assert} = require('chai')
+const {IncrementalMerkleTree} = require('@zk-kit/incremental-merkle-tree')
 
 Uint8Array.prototype.leftPad = function (length) {
   if (this.length < length) {
@@ -20,38 +21,6 @@ function calculateSnapshotLeaf(poseidon, utility, collection, token, wallet) {
   const leafToken2 = ethers.BigNumber.from(tokenBytes.slice(16)).toBigInt()
   const leafAddress = ethers.BigNumber.from(wallet.address).toBigInt()
   return poseidon.F.toString(poseidon([leafCollection, leafToken1, leafToken2, leafAddress]))
-}
-
-function calculateSnapshotTree(poseidon, snapshotLeaf1 = '0', snapshotLeaf2 = '0', snaphotLeaf3 = '0', snapshotLeaf4 = '0') {
-  const node1 = poseidon.F.toString(poseidon([ethers.BigNumber.from(snapshotLeaf1).toBigInt(), ethers.BigNumber.from(snapshotLeaf2).toBigInt()]))
-  const node2 = poseidon.F.toString(poseidon([ethers.BigNumber.from(snaphotLeaf3).toBigInt(), ethers.BigNumber.from(snapshotLeaf4).toBigInt()]))
-  const root = poseidon.F.toString(poseidon([ethers.BigNumber.from(node1).toBigInt(), ethers.BigNumber.from(node2).toBigInt()]))
-  return {
-    root,
-    nodes: [node1, node2],
-    leaves: [snapshotLeaf1, snapshotLeaf2, snaphotLeaf3, snapshotLeaf4]
-  }
-}
-
-function calculateSnapshotPath(snapshotTree, leafNumber) {
-  switch (leafNumber) {
-    case 1: return {
-      positions: [0, 0],
-      elements: [snapshotTree.leaves[1], snapshotTree.nodes[1]]
-    }
-    case 2: return {
-      positions: [1, 0],
-      elements: [snapshotTree.leaves[0], snapshotTree.nodes[1]]
-    }
-    case 3: return {
-      positions: [0, 1],
-      elements: [snapshotTree.leaves[3], snapshotTree.nodes[0]]
-    }
-    case 4: return {
-      positions: [1, 1],
-      elements: [snapshotTree.leaves[2], snapshotTree.nodes[0]]
-    }
-  }
 }
 
 async function signUtilityClaim(utility, collection, token, wallet) {
@@ -74,7 +43,7 @@ async function signUtilityClaim(utility, collection, token, wallet) {
   }
 }
 
-async function createClaimProof (utility, utilityStep, collection, token, claimSignature, snapshotPath) {
+async function createClaimProof (utility, utilityStep, collection, token, claimSignature, snapshotProof) {
   const proofInput = {
     utility: splitNumber(ethers.BigNumber.from(utility).toBigInt(), 2, 128),
     utilityStep,
@@ -83,8 +52,8 @@ async function createClaimProof (utility, utilityStep, collection, token, claimS
     publicKey: splitNumber(ethers.BigNumber.from(claimSignature.publicKey).toBigInt(), 4, 128),
     signatureR: splitNumber(ethers.BigNumber.from(claimSignature.signatureR).toBigInt(), 2, 128),
     signatureS: splitNumber(ethers.BigNumber.from(claimSignature.signatureS).toBigInt(), 2, 128),
-    snapshotPathPositions: snapshotPath.positions,
-    snapshotPathElements: snapshotPath.elements
+    snapshotPathPositions: snapshotProof.pathIndices,
+    snapshotPathElements: snapshotProof.siblings.map(s => ethers.BigNumber.from(s[0]).toBigInt())
   }
 
   const {proof, publicSignals} = await groth16.fullProve(proofInput, "../circuits/build/utilityClaim_js/utilityClaim.wasm", "../circuits/build/utilityClaim_final.zkey");
@@ -187,7 +156,12 @@ describe("Events", function () {
     snapshotLeaf2 = calculateSnapshotLeaf(poseidon, eventId, collection, token2, wallet2)
     snapshotLeaf3 = calculateSnapshotLeaf(poseidon, eventId, collection, token3, wallet3)
     snapshotLeaf4 = calculateSnapshotLeaf(poseidon, eventId, collection, token4, wallet4)
-    snapshotTree = calculateSnapshotTree(poseidon, snapshotLeaf1, snapshotLeaf2, snapshotLeaf3, snapshotLeaf4)
+
+    snapshotTree = new IncrementalMerkleTree(i => poseidon.F.toString(poseidon(i)), 16, BigInt(0), 2)
+    snapshotTree.insert(snapshotLeaf1)
+    snapshotTree.insert(snapshotLeaf2)
+    snapshotTree.insert(snapshotLeaf3)
+    snapshotTree.insert(snapshotLeaf4)
   });
 
   it("Register for an event", async function () {
@@ -196,9 +170,9 @@ describe("Events", function () {
     await events.createEvent(eventId, snapshotTree.root)
 
     const eventSignature = await signUtilityClaim(eventId, collection, token1, wallet1);
-    const snapshotPath = calculateSnapshotPath(snapshotTree, 1);
+    const snapshotProof = snapshotTree.createProof(0)
 
-    const {a, b, c, input} = await createClaimProof(eventId, 1, collection, token1, eventSignature, snapshotPath);
+    const {a, b, c, input} = await createClaimProof(eventId, 1, collection, token1, eventSignature, snapshotProof);
     await events.eventRegistration(a, b, c, input)
   })
 
@@ -208,12 +182,12 @@ describe("Events", function () {
     await events.createEvent(eventId, snapshotTree.root)
 
     const eventSignature = await signUtilityClaim(eventId, collection, token1, wallet1);
-    const snapshotPath = calculateSnapshotPath(snapshotTree, 1);
+    const snapshotProof = snapshotTree.createProof(0)
 
-    const {a: a1, b: b1, c: c1, input: input1} = await createClaimProof(eventId, 1, collection, token1, eventSignature, snapshotPath)
+    const {a: a1, b: b1, c: c1, input: input1} = await createClaimProof(eventId, 1, collection, token1, eventSignature, snapshotProof)
     await events.eventRegistration(a1, b1, c1, input1)
 
-    const {a: a2, b: b2, c: c2, input: input2} = await createClaimProof(eventId, 2, collection, token1, eventSignature, snapshotPath)
+    const {a: a2, b: b2, c: c2, input: input2} = await createClaimProof(eventId, 2, collection, token1, eventSignature, snapshotProof)
     await events.eventEntrance(a2, b2, c2, input2)
   })
 
@@ -239,9 +213,9 @@ describe("Events", function () {
     await events.createEvent(eventId, snapshotTree.root)
 
     const eventSignature = await signUtilityClaim(eventId, collection, token1, wallet1);
-    const snapshotPath = calculateSnapshotPath(snapshotTree, 1);
+    const snapshotProof = snapshotTree.createProof(0)
 
-    const {a, b, c, input} = await createClaimProof(eventId, 1, collection, token1, eventSignature, snapshotPath);
+    const {a, b, c, input} = await createClaimProof(eventId, 1, collection, token1, eventSignature, snapshotProof);
     await events.eventRegistration(a, b, c, input)
 
     let error = "";
@@ -261,9 +235,9 @@ describe("Events", function () {
     await events.createEvent(eventId, snapshotTree.root)
 
     const eventSignature = await signUtilityClaim(eventId, collection, token1, wallet1);
-    const snapshotPath = calculateSnapshotPath(snapshotTree, 1);
+    const snapshotProof = snapshotTree.createProof(0)
 
-    const {a, b, c, input} = await createClaimProof(eventId, 2, collection, token1, eventSignature, snapshotPath);
+    const {a, b, c, input} = await createClaimProof(eventId, 2, collection, token1, eventSignature, snapshotProof);
 
     let error = "";
     try {
