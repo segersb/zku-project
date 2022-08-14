@@ -2,6 +2,7 @@ import ethers from "ethers";
 import {wasm} from 'circom_tester'
 import {buildPoseidon} from "circomlibjs"
 import {assert} from 'chai'
+import { IncrementalMerkleTree } from "@zk-kit/incremental-merkle-tree"
 
 Uint8Array.prototype.leftPad = function (length) {
     if (this.length < length) {
@@ -16,6 +17,7 @@ Uint8Array.prototype.leftPad = function (length) {
 describe("UtilityClaim", function () {
     let circuit
     let poseidon
+
     before(async function () {
         this.timeout(60000000)
         circuit = await wasm("src/utilityClaim.circom")
@@ -29,38 +31,6 @@ describe("UtilityClaim", function () {
         const leafToken2 = ethers.BigNumber.from(tokenBytes.slice(16)).toBigInt()
         const leafAddress = ethers.BigNumber.from(wallet.address).toBigInt()
         return poseidon.F.toString(poseidon([leafCollection, leafToken1, leafToken2, leafAddress]))
-    }
-
-    function calculateSnapshotTree(snapshotLeaf1 = '0', snapshotLeaf2 = '0', snaphotLeaf3 = '0', snapshotLeaf4 = '0') {
-        const node1 = poseidon.F.toString(poseidon([ethers.BigNumber.from(snapshotLeaf1).toBigInt(), ethers.BigNumber.from(snapshotLeaf2).toBigInt()]))
-        const node2 = poseidon.F.toString(poseidon([ethers.BigNumber.from(snaphotLeaf3).toBigInt(), ethers.BigNumber.from(snapshotLeaf4).toBigInt()]))
-        const root = poseidon.F.toString(poseidon([ethers.BigNumber.from(node1).toBigInt(), ethers.BigNumber.from(node2).toBigInt()]))
-        return {
-            root,
-            nodes: [node1, node2],
-            leaves: [snapshotLeaf1, snapshotLeaf2, snaphotLeaf3, snapshotLeaf4]
-        }
-    }
-
-    function calculateSnapshotPath(snapshotTree, leafNumber) {
-        switch (leafNumber) {
-            case 1: return {
-                positions: [0, 0],
-                elements: [snapshotTree.leaves[1], snapshotTree.nodes[1]]
-            }
-            case 2: return {
-                positions: [1, 0],
-                elements: [snapshotTree.leaves[0], snapshotTree.nodes[1]]
-            }
-            case 3: return {
-                positions: [0, 1],
-                elements: [snapshotTree.leaves[3], snapshotTree.nodes[0]]
-            }
-            case 4: return {
-                positions: [1, 1],
-                elements: [snapshotTree.leaves[2], snapshotTree.nodes[0]]
-            }
-        }
     }
 
     async function signUtilityClaim(utility, collection, token, wallet) {
@@ -83,7 +53,7 @@ describe("UtilityClaim", function () {
         }
     }
 
-    async function claimUtility(utility, utilityStep, collection, token, claimSignature, snapshotPath) {
+    async function claimUtility(utility, utilityStep, collection, token, claimSignature, snapshotProof) {
         const witness = await circuit.calculateWitness({
             utility: splitNumber(ethers.BigNumber.from(utility).toBigInt(), 2, 128),
             utilityStep,
@@ -92,8 +62,8 @@ describe("UtilityClaim", function () {
             publicKey: splitNumber(ethers.BigNumber.from(claimSignature.publicKey).toBigInt(), 4, 128),
             signatureR: splitNumber(ethers.BigNumber.from(claimSignature.signatureR).toBigInt(), 2, 128),
             signatureS: splitNumber(ethers.BigNumber.from(claimSignature.signatureS).toBigInt(), 2, 128),
-            snapshotPathPositions: snapshotPath.positions,
-            snapshotPathElements: snapshotPath.elements
+            snapshotPathPositions: snapshotProof.pathIndices,
+            snapshotPathElements: snapshotProof.siblings.map(s => ethers.BigNumber.from(s[0]).toBigInt())
         }, true)
 
         return {
@@ -160,21 +130,26 @@ describe("UtilityClaim", function () {
         const snapshotLeaf2 = calculateSnapshotLeaf(utility, collection, token2, wallet2)
         const snapshotLeaf3 = calculateSnapshotLeaf(utility, collection, token3, wallet3)
         const snapshotLeaf4 = calculateSnapshotLeaf(utility, collection, token4, wallet4)
-        const snapshotTree = calculateSnapshotTree(snapshotLeaf1, snapshotLeaf2, snapshotLeaf3, snapshotLeaf4);
 
-        const claimSignature = await signUtilityClaim(utility, collection, token1, wallet1);
-        const snapshotPath = calculateSnapshotPath(snapshotTree, 1);
+        const snapshotTree = new IncrementalMerkleTree(i => poseidon.F.toString(poseidon(i)), 16, BigInt(0), 2)
+        snapshotTree.insert(snapshotLeaf1)
+        snapshotTree.insert(snapshotLeaf2)
+        snapshotTree.insert(snapshotLeaf3)
+        snapshotTree.insert(snapshotLeaf4)
 
-        const expectedEventCommitment = calculateClaimCommitment(utility, claimSignature);
-        const expectedRegistrationNullifier = calculateClaimNullifier(1, claimSignature);
-        const expectedEntranceNullifier = calculateClaimNullifier(2, claimSignature);
+        const claimSignature = await signUtilityClaim(utility, collection, token1, wallet1)
+        const snapshotProof = snapshotTree.createProof(0)
 
-        const registrationProof = await claimUtility(utility, 1, collection, token1, claimSignature, snapshotPath);
+        const expectedEventCommitment = calculateClaimCommitment(utility, claimSignature)
+        const expectedRegistrationNullifier = calculateClaimNullifier(1, claimSignature)
+        const expectedEntranceNullifier = calculateClaimNullifier(2, claimSignature)
+
+        const registrationProof = await claimUtility(utility, 1, collection, token1, claimSignature, snapshotProof)
         assert.equal(registrationProof.snapshotRoot, snapshotTree.root, 'The snapshot root from the registration proof must equal the root calculated from the leaves')
         assert.equal(registrationProof.claimCommitment, expectedEventCommitment, 'The registration proof commitment should match the expected value')
         assert.equal(registrationProof.claimNullifier, expectedRegistrationNullifier, 'The registration proof nullifier should match the expected value')
 
-        const entranceProof = await claimUtility(utility, 2, collection, token1, claimSignature, snapshotPath);
+        const entranceProof = await claimUtility(utility, 2, collection, token1, claimSignature, snapshotProof)
         assert.equal(entranceProof.snapshotRoot, snapshotTree.root, 'The snapshot root from the entrance proof must equal the root calculated from the leaves')
         assert.equal(entranceProof.claimCommitment, expectedEventCommitment, 'The entrance proof commitment should match the expected value')
         assert.equal(entranceProof.claimNullifier, expectedEntranceNullifier, 'The entrance proof nullifier should match the expected value')

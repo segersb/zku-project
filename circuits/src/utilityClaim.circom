@@ -292,5 +292,5 @@ template Nums2Bits(numberCount, bitCount) {
     }
 }
 
-// TODO fixed tree depth of 2 for now
-component main {public [utility, utilityStep]} = UtilityClaim(2);
+// Used large enough tree
+component main {public [utility, utilityStep]} = UtilityClaim(16);

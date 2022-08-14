@@ -8,6 +8,7 @@
     "test": "mocha"
   },
   "dependencies": {
+    "@zk-kit/incremental-merkle-tree": "^0.4.3",
     "buffer": "^6.0.3",
     "chai": "^4.3.6",
     "circom_tester": "^0.0.14",
