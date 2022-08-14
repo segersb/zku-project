@@ -1,0 +1,156 @@
+<!--1 npx hardhat node-->
+<!--2 npx hardhat run --network localhost scripts/deploy.js-->
+<!--3 serve the root folder with a http server-->
+
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/snarkjs@0.4.22/build/snarkjs.min.js"></script>
+<script>
+Uint8Array.prototype.leftPad = function (length) {
+  if (this.length < length) {
+    let paddedArray = new Uint8Array(length)
+    paddedArray.set([...Array(length - this.length).map(() => 0)])
+    paddedArray.set(this, length - this.length)
+    return paddedArray
+  }
+  return this
+}
+
+async function signUtilityClaim(utility, collection, token, wallet) {
+  const utilityBytes = ethers.utils.arrayify(ethers.BigNumber.from(utility)).leftPad(32)
+  console.log('utilityBytes', utilityBytes)
+  const collectionBytes = ethers.utils.arrayify(ethers.BigNumber.from(collection)).leftPad(20)
+  const tokenBytes = ethers.utils.arrayify(ethers.BigNumber.from(token)).leftPad(32)
+  const messageBytes = ethers.utils.concat([utilityBytes, collectionBytes, tokenBytes])
+  const messageHash = ethers.BigNumber.from(ethers.utils.hashMessage(messageBytes)).toHexString()
+
+  const signature = await wallet.signMessage(messageBytes)
+  const signatureSplit = ethers.utils.splitSignature(signature)
+  const signatureR = signatureSplit.r
+  const signatureS = signatureSplit.s
+  const publicKey = '0x' + ethers.utils.recoverPublicKey(ethers.utils.arrayify(messageHash), signature).substring(4)
+
+  return {
+    signatureR,
+    signatureS,
+    publicKey
+  }
+}
+
+async function createClaimProof (utility, utilityStep, collection, token, claimSignature, snapshotPath) {
+  const proofInput = {
+    utility: splitNumber(ethers.BigNumber.from(utility).toBigInt(), 2, 128),
+    utilityStep,
+    collection: ethers.BigNumber.from(collection).toBigInt(),
+    token: splitNumber(ethers.BigNumber.from(token).toBigInt(), 2, 128),
+    publicKey: splitNumber(ethers.BigNumber.from(claimSignature.publicKey).toBigInt(), 4, 128),
+    signatureR: splitNumber(ethers.BigNumber.from(claimSignature.signatureR).toBigInt(), 2, 128),
+    signatureS: splitNumber(ethers.BigNumber.from(claimSignature.signatureS).toBigInt(), 2, 128),
+    snapshotPathPositions: snapshotPath.positions,
+    snapshotPathElements: snapshotPath.elements
+  }
+
+  console.log('proofInput.utility', proofInput.utility)
+
+  const {proof, publicSignals} = await snarkjs.groth16.fullProve(proofInput, "./utilityClaim.wasm", "./utilityClaim_final.zkey");
+  console.log('proof', proof)
+  console.log('publicSignals', publicSignals)
+
+  const editedPublicSignals = unstringifyBigInts(publicSignals);
+  const editedProof = unstringifyBigInts(proof);
+  const calldata = await snarkjs.groth16.exportSolidityCallData(editedProof, editedPublicSignals);
+
+  const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
+
+  const a = [argv[0], argv[1]];
+  const b = [[argv[2], argv[3]], [argv[4], argv[5]]];
+  const c = [argv[6], argv[7]];
+  const input = argv.slice(8);
+
+  console.log('a', a)
+  console.log('b', b)
+  console.log('c', c)
+  console.log('input', input)
+
+  return {
+    a,
+    b,
+    c,
+    input
+  }
+}
+
+function splitNumber(number, parts, bits) {
+  let mod = 1n;
+  for (let i = 0; i < bits; i++) {
+    mod = mod * 2n;
+  }
+
+  let splitNumber = [];
+  let remainder = number;
+  for (let i = 0; i < parts; i++) {
+    splitNumber.push(remainder % mod);
+    remainder = remainder / mod;
+  }
+  return splitNumber.reverse();
+}
+
+function unstringifyBigInts(o) {
+  if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
+    return BigInt(o);
+  } else if ((typeof(o) == "string") && (/^0x[0-9a-fA-F]+$/.test(o) ))  {
+    return BigInt(o);
+  } else if (Array.isArray(o)) {
+    return o.map(unstringifyBigInts);
+  } else if (typeof o == "object") {
+    if (o===null) return null;
+    const res = {};
+    const keys = Object.keys(o);
+    keys.forEach( (k) => {
+      res[k] = unstringifyBigInts(o[k]);
+    });
+    return res;
+  } else {
+    return o;
+  }
+}
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+<div id="app" class="section">
+  <button @click="makeProof">Make proof</button>
+</div>
+
+<script>
+const {createApp} = Vue
+
+createApp({
+  data () {
+    return {
+    }
+  },
+
+  methods: {
+    async makeProof () {
+      const utility = '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+      const utilityStep = '1'
+      const collection = '0x9378368ba6b85c1fba5b131b530f5f5bedf21a18'
+      const token = '100000000000000000001'
+      const claimSignature = {
+        signatureR: '0x6b9e10ff6875c5594f7327bbfc720e6511d382b5a6f1dca52be58790d65afdd3',
+        signatureS: '0x5ff4bba916287c3b8cf9e2377f676cfd41be2783523ac287b6d7f84e64ae458e',
+        publicKey: '0x8318535b54105d4a7aae60c08fc45f9687181b4fdfc625bd1a753fa7397fed753547f11ca8696646f2f3acb08e31016afac23e630c5d11f59f61fef57b0d2aa5'
+      }
+      const snapshotPath = {
+        positions: [ 0, 0 ],
+        elements: [
+          '11484493467002699854160789667647793170055970209167095376353104566305760714693',
+          '1578087681739422977589352106318173361265932963802612595307252170989262985530'
+        ]
+      }
+
+      const {a, b, c, input} = await createClaimProof(utility, utilityStep, collection, token, claimSignature, snapshotPath);
+    }
+  }
+}).mount('#app')
+</script>

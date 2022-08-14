@@ -234,32 +234,34 @@ template Secp256k1AddUnequal(n, k) {
         out[1][i] <-- tmp[1][i];
     }
 
-    component cubic_constraint = AddUnequalCubicConstraint();
-    for(var i = 0; i < k; i++){
-        cubic_constraint.x1[i] <== x1[i];
-        cubic_constraint.y1[i] <== y1[i];
-        cubic_constraint.x2[i] <== x2[i];
-        cubic_constraint.y2[i] <== y2[i];
-        cubic_constraint.x3[i] <== out[0][i];
-        cubic_constraint.y3[i] <== out[1][i];
-    }
+    // [adapted] --> removed constrains here for each multiplication of G
+    //component cubic_constraint = AddUnequalCubicConstraint();
+    //for(var i = 0; i < k; i++){
+    //    cubic_constraint.x1[i] <== x1[i];
+    //    cubic_constraint.y1[i] <== y1[i];
+    //    cubic_constraint.x2[i] <== x2[i];
+    //    cubic_constraint.y2[i] <== y2[i];
+    //    cubic_constraint.x3[i] <== out[0][i];
+    //    cubic_constraint.y3[i] <== out[1][i];
+    //}
     
-    component point_on_line = Secp256k1PointOnLine();
-    for(var i = 0; i < k; i++){
-        point_on_line.x1[i] <== a[0][i];
-        point_on_line.y1[i] <== a[1][i];
-        point_on_line.x2[i] <== b[0][i];
-        point_on_line.y2[i] <== b[1][i];
-        point_on_line.x3[i] <== out[0][i];
-        point_on_line.y3[i] <== out[1][i];
-    }
+    //component point_on_line = Secp256k1PointOnLine();
+    //for(var i = 0; i < k; i++){
+    //    point_on_line.x1[i] <== a[0][i];
+    //    point_on_line.y1[i] <== a[1][i];
+    //    point_on_line.x2[i] <== b[0][i];
+    //    point_on_line.y2[i] <== b[1][i];
+    //    point_on_line.x3[i] <== out[0][i];
+    //    point_on_line.y3[i] <== out[1][i];
+    //}
 
-    component x_check_in_range = CheckInRangeSecp256k1();
-    component y_check_in_range = CheckInRangeSecp256k1();
-    for(var i = 0; i < k; i++){
-        x_check_in_range.in[i] <== out[0][i];
-        y_check_in_range.in[i] <== out[1][i];
-    }
+    //component x_check_in_range = CheckInRangeSecp256k1();
+    //component y_check_in_range = CheckInRangeSecp256k1();
+    //for(var i = 0; i < k; i++){
+    //    x_check_in_range.in[i] <== out[0][i];
+    //    y_check_in_range.in[i] <== out[1][i];
+    //}
+    // [adapted] <--
 }
 
 template Secp256k1Double(n, k) {
@@ -281,33 +283,35 @@ template Secp256k1Double(n, k) {
         out[1][i] <-- tmp[1][i];
     }
 
-    component point_on_tangent = Secp256k1PointOnTangent();
-    for(var i = 0; i < k; i++){
-        point_on_tangent.x1[i] <== x1[i];
-        point_on_tangent.y1[i] <== y1[i];
-        point_on_tangent.x3[i] <== out[0][i];
-        point_on_tangent.y3[i] <== out[1][i];
-    }
+    // [adapted] --> removed constrains here for each multiplication of G
+    //component point_on_tangent = Secp256k1PointOnTangent();
+    //for(var i = 0; i < k; i++){
+    //    point_on_tangent.x1[i] <== x1[i];
+    //    point_on_tangent.y1[i] <== y1[i];
+    //    point_on_tangent.x3[i] <== out[0][i];
+    //    point_on_tangent.y3[i] <== out[1][i];
+    //}
  
-    component point_on_curve = Secp256k1PointOnCurve();
-    for(var i = 0; i < k; i++){
-        point_on_curve.x[i] <== out[0][i];
-        point_on_curve.y[i] <== out[1][i];
-    }
+    //component point_on_curve = Secp256k1PointOnCurve();
+    //for(var i = 0; i < k; i++){
+    //    point_on_curve.x[i] <== out[0][i];
+    //    point_on_curve.y[i] <== out[1][i];
+    //}
 
-    component x_check_in_range = CheckInRangeSecp256k1();
-    component y_check_in_range = CheckInRangeSecp256k1();
-    for(var i = 0; i < k; i++){
-        x_check_in_range.in[i] <== out[0][i];
-        y_check_in_range.in[i] <== out[1][i];
-    }
+    //component x_check_in_range = CheckInRangeSecp256k1();
+    //component y_check_in_range = CheckInRangeSecp256k1();
+    //for(var i = 0; i < k; i++){
+    //    x_check_in_range.in[i] <== out[0][i];
+    //    y_check_in_range.in[i] <== out[1][i];
+    //}
 
-    component x3_eq_x1 = BigIsEqual(4);
-    for(var i = 0; i < k; i++){
-        x3_eq_x1.in[0][i] <== out[0][i];
-        x3_eq_x1.in[1][i] <== x1[i];
-    }
-    x3_eq_x1.out === 0;
+    //component x3_eq_x1 = BigIsEqual(4);
+    //for(var i = 0; i < k; i++){
+    //    x3_eq_x1.in[0][i] <== out[0][i];
+    //    x3_eq_x1.in[1][i] <== x1[i];
+    //}
+    //x3_eq_x1.out === 0;
+    // [adapted] <--
 }
 
 template Secp256k1ScalarMult(n, k) {
@@ -379,4 +383,19 @@ template Secp256k1ScalarMult(n, k) {
         out[0][idx] <== partial[0][0][idx];
         out[1][idx] <== partial[0][1][idx];
     }
+
+    // [adapted] --> added constraint to check output multiplication of G
+    component point_on_curve = Secp256k1PointOnCurve();
+    for(var i = 0; i < k; i++){
+        point_on_curve.x[i] <== out[0][i];
+        point_on_curve.y[i] <== out[1][i];
+    }
+
+    component x_check_in_range = CheckInRangeSecp256k1();
+    component y_check_in_range = CheckInRangeSecp256k1();
+    for(var i = 0; i < k; i++){
+        x_check_in_range.in[i] <== out[0][i];
+        y_check_in_range.in[i] <== out[1][i];
+    }
+    // [adapted] <--
 }
