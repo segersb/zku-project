@@ -23,9 +23,9 @@ This is the main circuit used to verify the ownership of an NFT.
 
 #### Parameters
 
-| Name      | Description                                                                                                                                                                                  |
-|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| treeDepth | The depth of the NFT snapshot tree<br/>For the moment it is hardcoded to 2<br/>TBD either have a large enough value for all use cases or multiple contracts and use the most appropriate one |
+| Name      | Description                                                                                                   |
+|-----------|---------------------------------------------------------------------------------------------------------------|
+| treeDepth | The depth of the NFT snapshot is set to 16 allowing for 65536, which should be large enough for all use cases |
 
 #### Libraries
 The circuit makes use of a library `circom-ecdsa` by **0xPARC** to verify ECDSA signatures.
