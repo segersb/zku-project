@@ -16,6 +16,7 @@ contract Events is UtilityClaimVerifier, Ownable {
         uint32 eventCount;
         uint256 snapshotRoot;
         uint32 registrationCount;
+        uint32 entranceCount;
         mapping(uint256 => bool) registrationCommitments;
         mapping(uint256 => bool) registrationNullifiers;
         mapping(uint256 => bool) entranceNullifiers;
@@ -112,10 +113,27 @@ contract Events is UtilityClaimVerifier, Ownable {
         }
 
         _event.entranceNullifiers[claimNullifier] = true;
+        _event.entranceCount++;
+    }
+
+    function getUserEventIds(address user) public view returns (uint256[] memory) {
+        return userEventIds[user];
+    }
+
+    function getEventCreated(uint256 eventId) public view returns (bool) {
+        return events[eventId].created;
     }
 
     function getEventCid(uint256 eventId) public view returns (string memory) {
         return events[eventId].cid;
+    }
+
+    function getEventRegistrationCount(uint256 eventId) public view returns (uint32) {
+        return events[eventId].registrationCount;
+    }
+
+    function getEventEntranceCount(uint256 eventId) public view returns (uint32) {
+        return events[eventId].entranceCount;
     }
 
     function setUnitPrice(uint256 _unitPrice) public onlyOwner {

@@ -1,7 +1,7 @@
 import {useRouter} from "next/router";
 import {useEffect, useState} from "react";
 import styles from "../../styles/events.module.css";
-import {Button, Card, CardActions, CardContent, NoSsr, Stack, Tab, Tabs, TextField, Typography} from "@mui/material";
+import {Breadcrumbs, Button, Card, CardActions, CardContent, Link, NoSsr, Stack, Tab, Tabs, TextField, Typography} from "@mui/material";
 import {ethers} from "ethers";
 import {DateTimePicker, LocalizationProvider} from "@mui/x-date-pickers";
 import {AdapterMoment} from '@mui/x-date-pickers/AdapterMoment';
@@ -12,6 +12,7 @@ import Events from "../../public/Events.json";
 import {buildPoseidon} from "circomlibjs"
 import {IncrementalMerkleTree} from '@zk-kit/incremental-merkle-tree'
 import {v4 as uuid} from 'uuid';
+import useWait from "../../composables/useWait";
 
 export default function NewEvent () {
   const router = useRouter()
@@ -112,6 +113,12 @@ export default function NewEvent () {
         gasLimit: 250000
       })
 
+      const {waitForCondition} = useWait()
+      await waitForCondition(5000, 120, async () => {
+        const eventResponse = await fetch(`/api/events/${id}`)
+        return eventResponse.ok
+      })
+
       await router.push(`/events/${id}`)
     } finally {
       setCreateEventLoading(false)
@@ -170,6 +177,12 @@ export default function NewEvent () {
 
   return (
     <div className={styles.main}>
+      <Breadcrumbs>
+        <Link underline="hover" color="inherit" href="/">Home</Link>
+        <Link underline="hover" color="inherit" href="/events">Events</Link>
+        <Typography color="text.primary">New</Typography>
+      </Breadcrumbs>
+
       <Typography gutterBottom variant="h2" component="div">
         New event
       </Typography>
