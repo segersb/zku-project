@@ -30,7 +30,7 @@ export default function Event () {
 
   const {address} = useWallet()
 
-  useLoadEffect(async () => {
+  const {load} = useLoadEffect(async () => {
     if (!address) {
       return
     }
@@ -86,6 +86,7 @@ export default function Event () {
       if (registerResponse.ok) {
         window.localStorage.setItem(`${id}-${token.collection}-${token.token}-registration`, "true");
         setRegistrationDone(true)
+        await load()
       }
     } finally {
       setRegistrationLoading(false)

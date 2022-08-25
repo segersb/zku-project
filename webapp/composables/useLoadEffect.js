@@ -49,7 +49,7 @@ function useLoadEffect (loadFunction, watchParams = []) {
     })
   });
 
-  return {loading, loaded}
+  return {load, loading, loaded}
 }
 
 export default useLoadEffect

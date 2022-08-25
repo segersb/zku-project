@@ -72,7 +72,7 @@ export default function Event () {
           {/*  {message}*/}
           {/*</CardContent>*/}
           <CardActions>
-            {entranceValid &&
+            {(entranceValid && !entranceDone) &&
               <LoadingButton variant="outlined" loading={entranceLoading} onClick={enter}>Confirm entrance</LoadingButton>}
           </CardActions>
         </Card>
