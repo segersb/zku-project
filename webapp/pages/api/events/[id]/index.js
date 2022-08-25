@@ -1,5 +1,8 @@
-import {ethers} from "ethers";
-import Events from "../../../../public/Events.json";
+import {ethers} from "ethers"
+import Events from "../../../../public/Events.json"
+import useCachedIpfs from "../../../../composables/useCachedIpfs"
+
+const cachedIpfs = useCachedIpfs(20)
 
 export default async function handler (req, res) {
   const {id} = req.query
@@ -16,8 +19,7 @@ export default async function handler (req, res) {
   const registrationCount = await events.getEventRegistrationCount(id)
   const entranceCount = await events.getEventEntranceCount(id)
 
-  const eventDataResponse = await fetch(`https://ipfs.io/ipfs/${cid}`)
-  const {name, tokens} = await eventDataResponse.json()
+  const {name, tokens} = await cachedIpfs.getJsonContent(cid)
 
   res.status(200).json({
     cid,

@@ -28,6 +28,7 @@ contract Events is UtilityClaimVerifier, Ownable {
     error InvalidSnapshot();
     error InvalidStep();
     error DuplicateRegistration();
+    error DuplicateEntrance();
     error RegistrationFull();
     error InvalidProof();
     error UnknownRegistration();
@@ -88,6 +89,17 @@ contract Events is UtilityClaimVerifier, Ownable {
     }
 
     function eventEntrance(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[6] memory input) public {
+        validateEventEntrance(a, b, c, input);
+
+        uint256 claimNullifier = input[2];
+        uint256 eventId = input[3] * 340282366920938463463374607431768211456 + input[4];
+
+        Event storage _event = events[eventId];
+        _event.entranceNullifiers[claimNullifier] = true;
+        _event.entranceCount++;
+    }
+
+    function validateEventEntrance(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[6] memory input) public view returns (bool) {
         uint256 snapshotRoot = input[0];
         uint256 claimCommitment = input[1];
         uint256 claimNullifier = input[2];
@@ -108,12 +120,14 @@ contract Events is UtilityClaimVerifier, Ownable {
         if (!_event.registrationCommitments[claimCommitment]) {
             revert UnknownRegistration();
         }
+        if (_event.entranceNullifiers[claimNullifier]) {
+            revert DuplicateEntrance();
+        }
         if (!super.verifyProof(a, b, c, input)) {
             revert InvalidProof();
         }
 
-        _event.entranceNullifiers[claimNullifier] = true;
-        _event.entranceCount++;
+        return true;
     }
 
     function getUserEventIds(address user) public view returns (uint256[] memory) {

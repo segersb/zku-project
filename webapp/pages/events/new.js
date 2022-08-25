@@ -263,13 +263,14 @@ export default function NewEvent () {
           </CardContent>
           <CardActions>
             <LoadingButton
+              variant="outlined"
               onClick={addTokens}
               loading={addTokenLoading}
               disabled={addTokenDisabled}
             >
               Add
             </LoadingButton>
-            <Button color="error" onClick={clearTokens} disabled={addTokenLoading}>Clear</Button>
+            <Button variant="outlined" color="error" onClick={clearTokens} disabled={addTokenLoading}>Clear</Button>
           </CardActions>
         </Card>
 
@@ -280,7 +281,7 @@ export default function NewEvent () {
           disabled={true}
         />
         <LoadingButton
-          variant="contained"
+          variant="outlined"
           onClick={createEvent}
           loading={createEventLoading}
           disabled={createEventDisabled}

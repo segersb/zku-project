@@ -1,5 +1,5 @@
 import {useRouter} from "next/router"
-import {useEffect, useState} from "react"
+import {useState} from "react"
 import {Breadcrumbs, Button, Card, CardActions, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Link, ListItemText, MenuItem, Select, Stack, TextField, Typography} from "@mui/material"
 import styles from "../../../styles/events.module.css"
 import detectEthereumProvider from "@metamask/detect-provider"
@@ -50,11 +50,25 @@ export default function Event () {
 
     if (eligibleTokens.length) {
       const selectedToken = eligibleTokens[0]
-      setRegistrationDone(!!window.localStorage.getItem(`${id}-${selectedToken.collection}-${selectedToken.token}-registration`))
-      setEntranceQrCodeCreated(!!window.localStorage.getItem(`${id}-${selectedToken.collection}-${selectedToken.token}-entrance`))
-      setEntranceQrCodeData(window.localStorage.getItem(`${id}-${selectedToken.collection}-${selectedToken.token}-entrance`))
+      loadTokenState(selectedToken)
     }
   }, router)
+
+  const onTokenSelectionChange = newSelectedTokenIndex => {
+    setSelectedTokenIndex(newSelectedTokenIndex)
+    const selectedToken = eligibleTokens[newSelectedTokenIndex]
+    loadTokenState(selectedToken)
+  }
+
+  const loadTokenState = selectedToken => {
+    const storedRegistration = window.localStorage.getItem(`${id}-${selectedToken.collection}-${selectedToken.token}-registration`)
+    const storedEntrance = window.localStorage.getItem(`${id}-${selectedToken.collection}-${selectedToken.token}-entrance`)
+
+    setRegistrationDone(!!storedRegistration)
+    setEntranceQrCodeCreated(!!storedEntrance)
+    setEntranceQrCodeData(!!storedEntrance ? encodeURI(`${window.location.origin}/events/${id}/enter?proof=${storedEntrance}`) : '')
+    console.log('QR', !!storedEntrance ? encodeURI(`${window.location.origin}/events/${id}/enter?proof=${storedEntrance}`) : '')
+  }
 
   const register = async () => {
     setRegistrationLoading(true)
@@ -83,15 +97,15 @@ export default function Event () {
   const createEntranceQRCode = async () => {
     setCreateEntranceQRCodeLoading(true)
     try {
-      const token = eligibleTokens[selectedTokenIndex]
+      const selectedToken = eligibleTokens[selectedTokenIndex]
 
       const {createUtilityProof} = useUtilityCircuit()
       console.log('creating entrance proof')
-      const entranceProof = await createUtilityProof(id, tokens, token, 2)
+      const entranceProof = await createUtilityProof(id, tokens, selectedToken, 2)
       console.log('entrance proof created')
 
-      window.localStorage.setItem(`${id}-${token.collection}-${token.token}-entrance`, JSON.stringify(entranceProof));
-      setEntranceQrCodeCreated(true)
+      window.localStorage.setItem(`${id}-${selectedToken.collection}-${selectedToken.token}-entrance`, JSON.stringify(entranceProof));
+      loadTokenState(selectedToken)
     } finally {
       setCreateEntranceQRCodeLoading(false)
     }
@@ -110,17 +124,10 @@ export default function Event () {
     document.body.removeChild(downloadLink);
   };
 
-  const onTokenSelectionChange = newSelectedTokenIndex => {
-    setSelectedTokenIndex(newSelectedTokenIndex)
-    const token = eligibleTokens[newSelectedTokenIndex]
-    setRegistrationDone(!!window.localStorage.getItem(`${id}-${token.collection}-${token.token}-registration`))
-    setEntranceQrCodeCreated(!!window.localStorage.getItem(`${id}-${token.collection}-${token.token}-entrance`))
-    setEntranceQrCodeData(window.localStorage.getItem(`${id}-${token.collection}-${token.token}-entrance`))
-  }
-
   let tokenButton
   if (!registrationDone) {
     tokenButton = <LoadingButton
+      variant="outlined"
       onClick={register}
       loading={registrationLoading}
     >
@@ -128,6 +135,7 @@ export default function Event () {
     </LoadingButton>
   } else if (!entranceQrCodeCreated) {
     tokenButton = <LoadingButton
+      variant="outlined"
       onClick={createEntranceQRCode}
       loading={createEntranceQRCodeLoading}
     >
@@ -135,6 +143,7 @@ export default function Event () {
     </LoadingButton>
   } else {
     tokenButton = <Button
+      variant="outlined"
       onClick={() => setQrDialogOpen(true)}
     >
       View entrance QR code
@@ -227,7 +236,7 @@ export default function Event () {
           <QRCodeCanvas id="qr" size={350} value={entranceQrCodeData}/>
         </DialogContent>
         <DialogActions>
-          <Button onClick={downloadQRCode}>Download</Button>
+          <Button variant="outlined" onClick={downloadQRCode}>Download</Button>
         </DialogActions>
       </Dialog>
 

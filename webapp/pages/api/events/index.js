@@ -1,5 +1,5 @@
-import {ethers} from "ethers";
-import Events from "../../../public/Events.json";
+import {ethers} from "ethers"
+import Events from "../../../public/Events.json"
 
 export default async function handler (req, res) {
   const {user} = req.query

@@ -28,6 +28,8 @@ function useLoadEffect (loadFunction, router) {
     setLoading(true)
     load().catch(console.error)
   });
+
+  return {loading, loaded}
 }
 
 export default useLoadEffect

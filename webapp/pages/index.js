@@ -16,7 +16,7 @@ export default function Home() {
 
   return (
     <div className={styles.main}>
-      <Button onClick={connect} variant="contained">Connect</Button>
+      <Button onClick={connect} variant="outlined">Connect</Button>
     </div>
   )
 }
