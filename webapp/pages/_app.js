@@ -1,8 +1,8 @@
 import '../styles/globals.css'
 import {createTheme, CssBaseline, ThemeProvider} from "@mui/material";
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 import {useRouter} from "next/router";
-import useConnection from "../composables/useConnection";
+import useWallet from "../composables/useWallet";
 
 Uint8Array.prototype.leftPad = function (length) {
   if (this.length < length) {
@@ -20,13 +20,12 @@ const darkTheme = createTheme({
   },
 });
 
-
 function App ({Component, pageProps}) {
-  const {connected, connectionChecked} = useConnection()
+  const {connected, initialized} = useWallet()
   const router = useRouter()
 
   useEffect(() => {
-    if (!connectionChecked) {
+    if (!initialized) {
       return
     }
     if (!connected && router.pathname !== '/') {
@@ -36,7 +35,7 @@ function App ({Component, pageProps}) {
 
   return (
     <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
+      <CssBaseline/>
       <Component {...pageProps} />
     </ThemeProvider>
   );

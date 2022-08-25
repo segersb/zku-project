@@ -2,18 +2,16 @@ import {useRouter} from "next/router"
 import {useState} from "react"
 import {Breadcrumbs, Button, Card, CardActions, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Link, ListItemText, MenuItem, Select, Stack, TextField, Typography} from "@mui/material"
 import styles from "../../../styles/events.module.css"
-import detectEthereumProvider from "@metamask/detect-provider"
-import {ethers} from "ethers"
 import {LoadingButton} from "@mui/lab"
 import useUtilityCircuit from "../../../composables/useUtilityCircuit";
 import useLoadEffect from "../../../composables/useLoadEffect";
 import QRCodeCanvas from "qrcode.react";
+import useWallet from "../../../composables/useWallet";
 
 export default function Event () {
   const router = useRouter()
   const {id} = router.query
 
-  const [cid, setCid] = useState('')
   const [registrationCount, setRegistrationCount] = useState(0)
   const [entranceCount, setEntranceCount] = useState(0)
   const [name, setName] = useState('')
@@ -30,20 +28,20 @@ export default function Event () {
 
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
 
+  const {address} = useWallet()
+
   useLoadEffect(async () => {
+    if (!address) {
+      return
+    }
+
     const eventResponse = await fetch(`/api/events/${id}`)
     const event = await eventResponse.json()
 
-    setCid(event.cid)
     setRegistrationCount(event.registrationCount)
     setEntranceCount(event.entranceCount)
     setName(event.name)
     setTokens(event.tokens)
-
-    const provider = (await detectEthereumProvider())
-    const ethersProvider = new ethers.providers.Web3Provider(provider)
-    const signer = await ethersProvider.getSigner();
-    const address = await signer.getAddress()
 
     const eligibleTokens = event.tokens.filter(token => token.address.toLowerCase() === address.toLowerCase());
     setEligibleTokens(eligibleTokens)
@@ -52,7 +50,7 @@ export default function Event () {
       const selectedToken = eligibleTokens[0]
       loadTokenState(selectedToken)
     }
-  }, router)
+  }, [address])
 
   const onTokenSelectionChange = newSelectedTokenIndex => {
     setSelectedTokenIndex(newSelectedTokenIndex)

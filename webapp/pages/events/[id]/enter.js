@@ -17,7 +17,7 @@ export default function Event () {
 
   const [message, setMessage] = useState('')
 
-  const {loaded} = useLoadEffect(async () => {
+  useLoadEffect(async () => {
     setMessage('Validating entrance code...')
 
     const eventResponse = await fetch(`/api/events/${id}`)
@@ -40,7 +40,7 @@ export default function Event () {
     } else {
       setMessage('Invalid entrance code')
     }
-  }, router)
+  })
 
   const enter = async () => {
     setEntranceLoading(true)
@@ -52,9 +52,10 @@ export default function Event () {
 
       if (entranceResponse.ok) {
         setEntranceDone(true)
+        setMessage('Entrance confirmed!')
       }
     } finally {
-      setEntranceValid(false)
+      setEntranceLoading(false)
     }
   }
 

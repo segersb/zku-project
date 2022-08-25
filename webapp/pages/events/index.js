@@ -1,28 +1,24 @@
-import useConnection from "../../composables/useConnection";
 import {useRouter} from "next/router";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import styles from "../../styles/events.module.css";
-import {Breadcrumbs, Button, Card, CardActionArea, CardContent, IconButton, Link, Typography} from "@mui/material";
+import {Breadcrumbs, Card, CardActionArea, CardContent, IconButton, Link, Typography} from "@mui/material";
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
-import detectEthereumProvider from "@metamask/detect-provider";
-import {ethers} from "ethers";
 import useLoadEffect from "../../composables/useLoadEffect";
+import useWallet from "../../composables/useWallet";
 
 export default function Events () {
   const [events, setEvents] = useState([])
   const router = useRouter()
+  const {address} = useWallet()
 
   useLoadEffect(async () => {
-    const provider = (await detectEthereumProvider())
-    const ethersProvider = new ethers.providers.Web3Provider(provider)
-    const signer = await ethersProvider.getSigner();
-    const address = await signer.getAddress()
-
+    if (!address) {
+      return
+    }
     const eventsResponse = await fetch(`/api/events?user=${address}`)
     const events = await eventsResponse.json()
-
     setEvents(events)
-  })
+  }, [address])
 
   let content
   if (events.length === 0) {
@@ -53,7 +49,7 @@ export default function Events () {
       <Typography gutterBottom variant="h2" component="div">
         Events
         <IconButton onClick={() => router.push('/events/new')}>
-          <AddCircleOutlineRoundedIcon />
+          <AddCircleOutlineRoundedIcon/>
         </IconButton>
       </Typography>
       {content}

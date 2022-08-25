@@ -1,7 +1,7 @@
 import {useRouter} from "next/router";
 import {useEffect, useState} from "react";
 import styles from "../../styles/events.module.css";
-import {Breadcrumbs, Button, Card, CardActions, CardContent, Link, NoSsr, Stack, Tab, Tabs, TextField, Typography} from "@mui/material";
+import {Alert, Breadcrumbs, Button, Card, CardActions, CardContent, Link, NoSsr, Stack, Tab, Tabs, TextField, Typography} from "@mui/material";
 import {ethers} from "ethers";
 import {DateTimePicker, LocalizationProvider} from "@mui/x-date-pickers";
 import {AdapterMoment} from '@mui/x-date-pickers/AdapterMoment';
@@ -13,6 +13,7 @@ import {buildPoseidon} from "circomlibjs"
 import {IncrementalMerkleTree} from '@zk-kit/incremental-merkle-tree'
 import {v4 as uuid} from 'uuid';
 import useWait from "../../composables/useWait";
+import useWallet from "../../composables/useWallet";
 
 export default function NewEvent () {
   const router = useRouter()
@@ -35,15 +36,32 @@ export default function NewEvent () {
   const [createEventLoading, setCreateEventLoading] = useState(false)
   const [createEventDisabled, setCreateEventDisabled] = useState(true)
 
+  const [showChainMessage, setShowChainMessage] = useState(false)
   const {publicRuntimeConfig} = getConfig()
+  const {chainId} = useWallet()
 
   useEffect(() => {
-    try {
-      ethers.utils.getAddress(collection)
-    } catch (e) {
-      return setAddTokenDisabled(true)
+    if (Number(publicRuntimeConfig.eventsChainId) !== chainId) {
+      setShowChainMessage(true)
+    } else {
+      setShowChainMessage(false)
     }
+  })
 
+  useEffect(() => {
+    if (Number(publicRuntimeConfig.eventsChainId) !== chainId) {
+      return setCreateEventDisabled(true)
+    }
+    if (name.trim().length === 0) {
+      return setCreateEventDisabled(true)
+    }
+    if (tokens.length === 0) {
+      return setCreateEventDisabled(true)
+    }
+    setCreateEventDisabled(false)
+  })
+
+  useEffect(() => {
     if (addTab === 1 || addTab === 2) {
       if (!fromToken || !Number.isInteger(Number(fromToken))) {
         return setAddTokenDisabled(true)
@@ -57,16 +75,6 @@ export default function NewEvent () {
     }
 
     setAddTokenDisabled(false)
-  })
-
-  useEffect(() => {
-    if (name.trim().length === 0) {
-      return setCreateEventDisabled(true)
-    }
-    if (tokens.length === 0) {
-      return setCreateEventDisabled(true)
-    }
-    setCreateEventDisabled(false)
   })
 
   const createEvent = async () => {
@@ -101,10 +109,7 @@ export default function NewEvent () {
       }
 
       const {uri} = await publishResponse.json()
-      console.log('event URI', uri)
-
       const provider = new ethers.providers.Web3Provider(window.ethereum)
-      await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner()
       const events = new ethers.Contract(publicRuntimeConfig.eventsContract, Events.abi, signer)
 
@@ -177,6 +182,8 @@ export default function NewEvent () {
 
   return (
     <div className={styles.main}>
+      {showChainMessage && <Alert severity="warning">Please connect to network {publicRuntimeConfig.eventsChainName}</Alert>}
+
       <Breadcrumbs>
         <Link underline="hover" color="inherit" href="/">Home</Link>
         <Link underline="hover" color="inherit" href="/events">Events</Link>
