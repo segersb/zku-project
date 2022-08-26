@@ -4,6 +4,7 @@ import {Card, CardActions, CardHeader, Stack, Typography} from "@mui/material"
 import styles from "../../../styles/events.module.css"
 import {LoadingButton} from "@mui/lab"
 import useLoadEffect from "../../../composables/useLoadEffect";
+import useWait from "../../../composables/useWait";
 
 export default function Event () {
   const router = useRouter()
@@ -16,6 +17,8 @@ export default function Event () {
   const [entranceValid, setEntranceValid] = useState(false)
 
   const [message, setMessage] = useState('')
+
+  const {waitForCondition} = useWait()
 
   useLoadEffect(async () => {
     setMessage('Validating entrance code...')
@@ -51,6 +54,15 @@ export default function Event () {
       })
 
       if (entranceResponse.ok) {
+        await waitForCondition(1000, 60, async () => {
+          const entranceValidationResponse = await fetch(`/api/events/${id}/validate-entrance`, {
+            method: "POST",
+            body: proof
+          })
+          const entranceValidation = await entranceValidationResponse.json()
+          return entranceValidation.error && entranceValidation.error.includes('DuplicateEntrance')
+        })
+
         setEntranceDone(true)
         setMessage('Entrance confirmed!')
       }

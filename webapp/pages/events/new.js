@@ -40,6 +40,8 @@ export default function NewEvent () {
   const {publicRuntimeConfig} = getConfig()
   const {chainId} = useWallet()
 
+  const {waitForCondition} = useWait()
+
   useEffect(() => {
     if (Number(publicRuntimeConfig.eventsChainId) !== chainId) {
       setShowChainMessage(true)
@@ -118,7 +120,6 @@ export default function NewEvent () {
         gasLimit: 250000
       })
 
-      const {waitForCondition} = useWait()
       await waitForCondition(5000, 120, async () => {
         const eventResponse = await fetch(`/api/events/${id}`)
         return eventResponse.ok
@@ -162,7 +163,7 @@ export default function NewEvent () {
 
       const unitPriceResponse = await fetch("/api/events/unit-price")
       const {unitPrice} = await unitPriceResponse.json()
-      setPrice(Number((distinctTokens.length * unitPrice / 1000000000).toFixed(6)))
+      setPrice(Number((distinctTokens.length * unitPrice / 1000000000000000000).toFixed(6)))
       setWeiPrice(distinctTokens.length * unitPrice)
 
       setCollection('')

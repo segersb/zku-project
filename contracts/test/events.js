@@ -112,7 +112,7 @@ function unstringifyBigInts (o) {
 }
 
 describe("Events", function () {
-  const UNIT_PRICE = 1_000_000
+  const UNIT_PRICE = 2_200_000_000_00_000
   let poseidon
   let events
   let eventId

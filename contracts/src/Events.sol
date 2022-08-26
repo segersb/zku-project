@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract Events is UtilityClaimVerifier, Ownable {
-    uint256 unitPrice = 1_000_000;
+    uint256 unitPrice = 2_200_000_000_00_000; // 0.00022 ETH
     mapping(address => uint256[]) userEventIds;
     mapping(uint256 => Event) events;
 

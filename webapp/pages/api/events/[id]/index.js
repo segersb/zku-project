@@ -1,14 +1,12 @@
-import {ethers} from "ethers"
-import Events from "../../../../public/Events.json"
 import useCachedIpfs from "../../../../composables/useCachedIpfs"
+import {getEventsContract} from "../../../../lib/events";
 
 const cachedIpfs = useCachedIpfs(20)
 
 export default async function handler (req, res) {
   const {id} = req.query
 
-  const wsProvider = new ethers.providers.WebSocketProvider("ws://localhost:8545");
-  const events = new ethers.Contract(process.env.EVENTS_CONTRACT, Events.abi, wsProvider)
+  const events = getEventsContract()
 
   const created = await events.getEventCreated(id)
   if (!created) {

@@ -1,12 +1,10 @@
-import {ethers} from "ethers";
-import Events from "../../../../public/Events.json";
+import {getEventsContract} from "../../../../lib/events";
 
 export default async function handler (req, res) {
   const {id} = req.query
   const {a, b, c, input} = JSON.parse(req.body)
 
-  const wsProvider = new ethers.providers.WebSocketProvider("ws://localhost:8545");
-  const events = new ethers.Contract(process.env.EVENTS_CONTRACT, Events.abi, wsProvider)
+  const events = getEventsContract()
 
   const created = await events.getEventCreated(id)
   if (!created) {

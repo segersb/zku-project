@@ -1,5 +1,8 @@
 require("@nomiclabs/hardhat-waffle")
-require("hardhat-gas-reporter");
+require("@nomiclabs/hardhat-ethers")
+require("@nomiclabs/hardhat-etherscan");
+require("hardhat-gas-reporter")
+require('dotenv').config()
 const {task, types} = require("hardhat/config")
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -35,5 +38,14 @@ module.exports = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./build"
+  },
+  networks: {
+    goerli: {
+      url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+      accounts: [process.env.GOERLI_PRIVATE_KEY]
+    }
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
 }

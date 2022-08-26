@@ -7,6 +7,7 @@ import useUtilityCircuit from "../../../composables/useUtilityCircuit";
 import useLoadEffect from "../../../composables/useLoadEffect";
 import QRCodeCanvas from "qrcode.react";
 import useWallet from "../../../composables/useWallet";
+import useWait from "../../../composables/useWait";
 
 export default function Event () {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function Event () {
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
 
   const {address} = useWallet()
+  const {waitForCondition} = useWait()
 
   const {load} = useLoadEffect(async () => {
     if (!address) {
@@ -85,6 +87,14 @@ export default function Event () {
 
       if (registerResponse.ok) {
         window.localStorage.setItem(`${id}-${token.collection}-${token.token}-registration`, "true");
+
+        const currentRegistrationCount = registrationCount
+        await waitForCondition(1000, 60, async () => {
+          const eventResponse = await fetch(`/api/events/${id}`)
+          const event = await eventResponse.json()
+          return event.registrationCount > currentRegistrationCount
+        })
+
         setRegistrationDone(true)
         await load()
       }
@@ -161,6 +171,7 @@ export default function Event () {
           value={selectedTokenIndex}
           onChange={e => onTokenSelectionChange(e.target.value)}
           fullWidth={true}
+          disabled={registrationLoading || createEntranceQRCodeLoading}
         >
           {eligibleTokens.map((eligibleToken, index) =>
             <MenuItem key={index} value={index}>

@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     for (const transferEvent of transferEvents) {
       const address = ethers.BigNumber.from(transferEvent.topics[2]).toHexString()
       const token = ethers.BigNumber.from(transferEvent.topics[3]).toNumber()
-      if (!fromToken || !toToken || (fromToken <= token && token <= toToken)) {
+      if (fromToken == null || toToken == null || (fromToken <= token && token <= toToken)) {
         tokens.set(token, {
           collection,
           token,
