@@ -8,7 +8,7 @@ function useUtilityCircuit () {
   async function createUtilityProof (id, tokens, token, utilityStep) {
     const poseidon = await buildPoseidon()
 
-    const utilityBytes = ethers.utils.arrayify(ethers.BigNumber.from(id)).leftPad(32)
+    const utilityBytes = ethers.utils.arrayify(ethers.BigNumber.from(id)).leftPad(16)
     const collectionBytes = ethers.utils.arrayify(ethers.BigNumber.from(token.collection)).leftPad(20)
     const tokenBytes = ethers.utils.arrayify(ethers.BigNumber.from(token.token)).leftPad(32)
     const messageBytes = ethers.utils.concat([utilityBytes, collectionBytes, tokenBytes])
@@ -37,7 +37,7 @@ function useUtilityCircuit () {
     const snapshotProof = snapshotTree.createProof(snapshotTreeIndex)
 
     const proofInput = {
-      utility: splitNumber(ethers.BigNumber.from(id).toBigInt(), 2, 128),
+      utility: id,
       utilityStep,
       collection: ethers.BigNumber.from(token.collection).toBigInt(),
       token: splitNumber(ethers.BigNumber.from(token.token).toBigInt(), 2, 128),

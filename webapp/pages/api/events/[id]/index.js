@@ -1,7 +1,7 @@
-import useCachedIpfs from "../../../../composables/useCachedIpfs"
 import {getEventsContract} from "../../../../lib/events";
+import cachedIpfs from "../../../../lib/cachedIpfs";
 
-const cachedIpfs = useCachedIpfs(20)
+const ipfs = cachedIpfs(20)
 
 export default async function handler (req, res) {
   const {id} = req.query
@@ -17,7 +17,7 @@ export default async function handler (req, res) {
   const registrationCount = await events.getEventRegistrationCount(id)
   const entranceCount = await events.getEventEntranceCount(id)
 
-  const {name, tokens} = await cachedIpfs.getJsonContent(cid)
+  const {name, tokens} = await ipfs.getJsonContent(cid)
 
   res.status(200).json({
     cid,

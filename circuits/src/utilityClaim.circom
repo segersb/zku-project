@@ -6,7 +6,7 @@ include "../lib/zk-identity/eth.circom";
 
 template UtilityClaim(treeDepth) {
     // public input
-    signal input utility[2];
+    signal input utility;
     signal input utilityStep;
     
     // private input
@@ -24,13 +24,13 @@ template UtilityClaim(treeDepth) {
     signal output claimNullifier;
 
     // convert inputs to bits
-    component utilityBits = Nums2Bits(2, 128);
+    component utilityBits = Nums2Bits(1, 128);
     component collectionBits = Nums2Bits(1, 160);
     component tokenBits = Nums2Bits(2, 128);
     component publicKeyBits = Nums2Bits(4, 128);
     component signatureRBits = Nums2Bits(2, 128);
     component signatureSBits = Nums2Bits(2, 128);
-    for (var i = 0; i < 2; i++) utilityBits.numbers[i] <== utility[i];
+    utilityBits.numbers[0] <== utility;
     collectionBits.numbers[0] <== collection;
     for (var i = 0; i < 2; i++) tokenBits.numbers[i] <== token[i];
     for (var i = 0; i < 4; i++) publicKeyBits.numbers[i] <== publicKey[i];
@@ -39,7 +39,7 @@ template UtilityClaim(treeDepth) {
     
     // calculate expected message hash
     component utilityClaimMessageHash = UtilityClaimMessageHash();
-    for (var i = 0; i < 256; i++) utilityClaimMessageHash.utility[i] <== utilityBits.bits[i];
+    for (var i = 0; i < 128; i++) utilityClaimMessageHash.utility[i] <== utilityBits.bits[i];
     for (var i = 0; i < 160; i++) utilityClaimMessageHash.collection[i] <== collectionBits.bits[i];
     for (var i = 0; i < 256; i++) utilityClaimMessageHash.token[i] <== tokenBits.bits[i];
 
@@ -67,7 +67,7 @@ template UtilityClaim(treeDepth) {
     snapshotRoot <== utilitySnapshotRoot.snapshotRoot;
 
     component utilityClaimCommitment = UtilityClaimCommitment();
-    for (var i = 0; i < 256; i++) utilityClaimCommitment.utility[i] <== utilityBits.bits[i];
+    utilityClaimCommitment.utility <== utility;
     for (var i = 0; i < 256; i++) utilityClaimCommitment.signatureR[i] <== signatureRBits.bits[i];
     claimCommitment <== utilityClaimCommitment.claimCommitment;
 
@@ -79,12 +79,12 @@ template UtilityClaim(treeDepth) {
 
 // Outputs the expected message hash according to the Ethereum singing standard
 template UtilityClaimMessageHash() {
-    signal input utility[256];
+    signal input utility[128];
     signal input collection[160];
     signal input token[256];
     signal output messageHash[256];
 
-    component messageKeccak = Keccak(896, 256);
+    component messageKeccak = Keccak(768, 256);
     var messageKeccakIndex = 0;
 
     // 208 bits for prefix "\x19Ethereum Signed Message:\n"
@@ -97,9 +97,9 @@ template UtilityClaimMessageHash() {
         }
     }
 
-    // 16 bits for fixed length "84"
+    // 16 bits for fixed length as string "68"
     component lengthBits = Num2Bits(16);
-    lengthBits.in <== 14388;
+    lengthBits.in <== 13880;
     for (var i = 0; i < 2; i++) {
         for (var j = 0; j < 8; j++) {
             messageKeccak.in[messageKeccakIndex] <== lengthBits.out[16 - i*8 - 8 + j];
@@ -107,8 +107,8 @@ template UtilityClaimMessageHash() {
         }
     }
 
-    // 256 bits for uint256 utility ID
-    for (var i = 0; i < 32; i++) {
+    // 128 bits for uint256 utility ID
+    for (var i = 0; i < 16; i++) {
         for (var j = 0; j < 8; j++) {
             messageKeccak.in[messageKeccakIndex] <== utility[i*8 + 7 - j];
             messageKeccakIndex++;
@@ -238,25 +238,19 @@ template UtilitySnapshotRoot(treeDepth) {
 
 // Calculates the commitment for the utility claim, remains the same for all steps
 template UtilityClaimCommitment() {
-    signal input utility[256];
+    signal input utility;
     signal input signatureR[256];
     signal output claimCommitment;
-
-    component utilityNum1 = Bits2Num(128);
-    component utilityNum2 = Bits2Num(128);
-    for (var i = 0; i < 128; i++) utilityNum1.in[i] <== utility[127 - i];
-    for (var i = 0; i < 128; i++) utilityNum2.in[i] <== utility[255 - i];
 
     component signatureRNum1 = Bits2Num(128);
     component signatureRNum2 = Bits2Num(128);
     for (var i = 0; i < 128; i++) signatureRNum1.in[i] <== signatureR[127 - i];
     for (var i = 0; i < 128; i++) signatureRNum2.in[i] <== signatureR[255 - i];
 
-    component claimCommitmentPoseidon = Poseidon(4);
-    claimCommitmentPoseidon.inputs[0] <== utilityNum1.out;
-    claimCommitmentPoseidon.inputs[1] <== utilityNum2.out;
-    claimCommitmentPoseidon.inputs[2] <== signatureRNum1.out;
-    claimCommitmentPoseidon.inputs[3] <== signatureRNum2.out;
+    component claimCommitmentPoseidon = Poseidon(3);
+    claimCommitmentPoseidon.inputs[0] <== utility;
+    claimCommitmentPoseidon.inputs[1] <== signatureRNum1.out;
+    claimCommitmentPoseidon.inputs[2] <== signatureRNum2.out;
     claimCommitment <== claimCommitmentPoseidon.out;
 }
 

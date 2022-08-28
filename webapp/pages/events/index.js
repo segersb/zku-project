@@ -1,7 +1,7 @@
 import {useRouter} from "next/router";
 import {useState} from "react";
 import styles from "../../styles/events.module.css";
-import {Breadcrumbs, Card, CardActionArea, CardContent, IconButton, Link, Typography} from "@mui/material";
+import {Backdrop, Breadcrumbs, Card, CardActionArea, CardContent, CircularProgress, IconButton, Link, Typography} from "@mui/material";
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import useLoadEffect from "../../composables/useLoadEffect";
 import useWallet from "../../composables/useWallet";
@@ -11,19 +11,19 @@ export default function Events () {
   const router = useRouter()
   const {address} = useWallet()
 
-  useLoadEffect(async () => {
+  const {loading} = useLoadEffect(async () => {
     if (!address) {
       return
     }
     const eventsResponse = await fetch(`/api/events?user=${address}`)
     const events = await eventsResponse.json()
     setEvents(events)
-  }, [address])
+  }, [address]);
 
   let content
   if (events.length === 0) {
     content = <Typography variant="body2" color="text.secondary">
-      You haven't created any events yet
+      You haven&apos;t created any events yet
     </Typography>
   } else {
     content = events.map((event, i) =>
@@ -41,6 +41,10 @@ export default function Events () {
 
   return (
     <div className={styles.main}>
+      <Backdrop open={loading}>
+        <CircularProgress />
+      </Backdrop>
+
       <Breadcrumbs>
         <Link underline="hover" color="inherit" href="/">Home</Link>
         <Typography color="text.primary">Events</Typography>

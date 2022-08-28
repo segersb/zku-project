@@ -10,7 +10,12 @@ export default function Home() {
   const router = useRouter()
   useEffect(() => {
     if (connected) {
-      router.push('/user').catch(console.error)
+      const initRoute = window.localStorage.getItem('init-route');
+      if (initRoute) {
+        router.push(initRoute).catch(console.error)
+      } else {
+        router.push('user').catch(console.error)
+      }
     }
   })
 

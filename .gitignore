@@ -6,3 +6,6 @@ circuits/build
 contracts/cache
 contracts/build
 contracts/.env
+
+webapp/.env*
+webapp/.next

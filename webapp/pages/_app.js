@@ -29,7 +29,8 @@ function App ({Component, pageProps}) {
       return
     }
     if (!connected && router.pathname !== '/') {
-      router.push('/').catch(console.error)
+      window.localStorage.setItem('init-route', router.asPath)
+      router.replace('/').catch(console.error)
     }
   })
 

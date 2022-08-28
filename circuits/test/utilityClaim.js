@@ -24,7 +24,7 @@ describe("UtilityClaim", function () {
         poseidon = await buildPoseidon()
     })
 
-    function calculateSnapshotLeaf(utility, collection, token, wallet) {
+    function calculateSnapshotLeaf(collection, token, wallet) {
         const tokenBytes = ethers.utils.arrayify(ethers.BigNumber.from(token)).leftPad(32)
         const leafCollection = ethers.BigNumber.from(collection).toBigInt()
         const leafToken1 = ethers.BigNumber.from(tokenBytes.slice(0, 16)).toBigInt()
@@ -34,7 +34,7 @@ describe("UtilityClaim", function () {
     }
 
     async function signUtilityClaim(utility, collection, token, wallet) {
-        const utilityBytes = ethers.utils.arrayify(ethers.BigNumber.from(utility)).leftPad(32)
+        const utilityBytes = ethers.utils.arrayify(ethers.BigNumber.from(utility)).leftPad(16)
         const collectionBytes = ethers.utils.arrayify(ethers.BigNumber.from(collection)).leftPad(20)
         const tokenBytes = ethers.utils.arrayify(ethers.BigNumber.from(token)).leftPad(32)
         const messageBytes = ethers.utils.concat([utilityBytes, collectionBytes, tokenBytes])
@@ -55,7 +55,7 @@ describe("UtilityClaim", function () {
 
     async function claimUtility(utility, utilityStep, collection, token, claimSignature, snapshotProof) {
         const witness = await circuit.calculateWitness({
-            utility: splitNumber(ethers.BigNumber.from(utility).toBigInt(), 2, 128),
+            utility,
             utilityStep,
             collection: ethers.BigNumber.from(collection).toBigInt(),
             token: splitNumber(ethers.BigNumber.from(token).toBigInt(), 2, 128),
@@ -74,15 +74,13 @@ describe("UtilityClaim", function () {
     }
 
     function calculateClaimCommitment(utility, claimSignature) {
-        const utilityBytes = ethers.utils.arrayify(ethers.BigNumber.from(utility)).leftPad(32)
         const signatureRBytes = ethers.utils.arrayify(ethers.BigNumber.from(claimSignature.signatureR)).leftPad(32)
 
-        const nullifierUtility1 = ethers.BigNumber.from(utilityBytes.slice(0, 16)).toBigInt()
-        const nullifierUtility2 = ethers.BigNumber.from(utilityBytes.slice(16)).toBigInt()
+        const nullifierUtility = ethers.BigNumber.from(utility).toBigInt()
         const nullifierSignatureR1 = ethers.BigNumber.from(signatureRBytes.slice(0, 16)).toBigInt()
         const nullifierSignatureR2 = ethers.BigNumber.from(signatureRBytes.slice(16)).toBigInt()
 
-        return poseidon.F.toString(poseidon([nullifierUtility1, nullifierUtility2, nullifierSignatureR1, nullifierSignatureR2]))
+        return poseidon.F.toString(poseidon([nullifierUtility, nullifierSignatureR1, nullifierSignatureR2]))
     }
 
     function calculateClaimNullifier(utilityStep, claimSignature) {
@@ -113,7 +111,7 @@ describe("UtilityClaim", function () {
     it("UtilityClaim for events", async function () {
         this.timeout(60000000)
 
-        const utility = '1234'
+        const utility = '0xd9aca7cc64c54031a2bdacf31f5b7673'
         const collection = '0x9378368ba6b85c1fba5b131b530f5f5bedf21a18'
 
         const token1 = '100000000000000000001'
@@ -126,10 +124,10 @@ describe("UtilityClaim", function () {
         const wallet3 = ethers.Wallet.createRandom()
         const wallet4 = ethers.Wallet.createRandom()
 
-        const snapshotLeaf1 = calculateSnapshotLeaf(utility, collection, token1, wallet1)
-        const snapshotLeaf2 = calculateSnapshotLeaf(utility, collection, token2, wallet2)
-        const snapshotLeaf3 = calculateSnapshotLeaf(utility, collection, token3, wallet3)
-        const snapshotLeaf4 = calculateSnapshotLeaf(utility, collection, token4, wallet4)
+        const snapshotLeaf1 = calculateSnapshotLeaf(collection, token1, wallet1)
+        const snapshotLeaf2 = calculateSnapshotLeaf(collection, token2, wallet2)
+        const snapshotLeaf3 = calculateSnapshotLeaf(collection, token3, wallet3)
+        const snapshotLeaf4 = calculateSnapshotLeaf(collection, token4, wallet4)
 
         const snapshotTree = new IncrementalMerkleTree(i => poseidon.F.toString(poseidon(i)), 16, BigInt(0), 2)
         snapshotTree.insert(snapshotLeaf1)

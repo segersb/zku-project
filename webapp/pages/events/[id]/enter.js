@@ -1,6 +1,6 @@
 import {useRouter} from "next/router"
 import {useState} from "react"
-import {Card, CardActions, CardHeader, Stack, Typography} from "@mui/material"
+import {Backdrop, Card, CardActions, CardHeader, CircularProgress, Stack, Typography} from "@mui/material"
 import styles from "../../../styles/events.module.css"
 import {LoadingButton} from "@mui/lab"
 import useLoadEffect from "../../../composables/useLoadEffect";
@@ -20,7 +20,7 @@ export default function Event () {
 
   const {waitForCondition} = useWait()
 
-  useLoadEffect(async () => {
+  const {loading} = useLoadEffect(async () => {
     setMessage('Validating entrance code...')
 
     const eventResponse = await fetch(`/api/events/${id}`)
@@ -73,6 +73,10 @@ export default function Event () {
 
   return (
     <div className={styles.main}>
+      <Backdrop open={loading}>
+        <CircularProgress />
+      </Backdrop>
+
       <Typography gutterBottom variant="h2" component="div">
         Event entrance
       </Typography>
@@ -80,9 +84,6 @@ export default function Event () {
       <Stack spacing={2} sx={{paddingX: 1, width: '100%', maxWidth: 500}}>
         <Card variant="outlined">
           <CardHeader title={name} subheader={message}/>
-          {/*<CardContent>*/}
-          {/*  {message}*/}
-          {/*</CardContent>*/}
           <CardActions>
             {(entranceValid && !entranceDone) &&
               <LoadingButton variant="outlined" loading={entranceLoading} onClick={enter}>Confirm entrance</LoadingButton>}

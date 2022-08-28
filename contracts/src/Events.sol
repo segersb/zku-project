@@ -55,12 +55,24 @@ contract Events is UtilityClaimVerifier, Ownable {
         userEventIds[msg.sender].push(eventId);
     }
 
-    function eventRegistration(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[6] memory input) public {
-        uint256 snapshotRoot = input[0];
+    function eventRegistration(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[5] memory input) public {
+        validateEventRegistration(a, b, c, input);
+
         uint256 claimCommitment = input[1];
         uint256 claimNullifier = input[2];
-        uint256 eventId = input[3] * 340282366920938463463374607431768211456 + input[4];
-        uint256 eventStep = input[5];
+        uint256 eventId = input[3];
+
+        Event storage _event = events[eventId];
+        _event.registrationCommitments[claimCommitment] = true;
+        _event.registrationNullifiers[claimNullifier] = true;
+        _event.registrationCount++;
+    }
+
+    function validateEventRegistration(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[5] memory input) public view returns (bool) {
+        uint256 snapshotRoot = input[0];
+        uint256 claimNullifier = input[2];
+        uint256 eventId = input[3];
+        uint256 eventStep = input[4];
 
         Event storage _event = events[eventId];
 
@@ -83,28 +95,26 @@ contract Events is UtilityClaimVerifier, Ownable {
             revert InvalidProof();
         }
 
-        _event.registrationCommitments[claimCommitment] = true;
-        _event.registrationNullifiers[claimNullifier] = true;
-        _event.registrationCount++;
+        return true;
     }
 
-    function eventEntrance(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[6] memory input) public {
+    function eventEntrance(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[5] memory input) public {
         validateEventEntrance(a, b, c, input);
 
         uint256 claimNullifier = input[2];
-        uint256 eventId = input[3] * 340282366920938463463374607431768211456 + input[4];
+        uint256 eventId = input[3];
 
         Event storage _event = events[eventId];
         _event.entranceNullifiers[claimNullifier] = true;
         _event.entranceCount++;
     }
 
-    function validateEventEntrance(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[6] memory input) public view returns (bool) {
+    function validateEventEntrance(uint[2] memory a, uint[2][2] memory b, uint[2] memory c, uint[5] memory input) public view returns (bool) {
         uint256 snapshotRoot = input[0];
         uint256 claimCommitment = input[1];
         uint256 claimNullifier = input[2];
-        uint256 eventId = input[3] * 340282366920938463463374607431768211456 + input[4];
-        uint256 eventStep = input[5];
+        uint256 eventId = input[3];
+        uint256 eventStep = input[4];
 
         Event storage _event = events[eventId];
 

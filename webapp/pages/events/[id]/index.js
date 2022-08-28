@@ -1,6 +1,28 @@
 import {useRouter} from "next/router"
 import {useState} from "react"
-import {Breadcrumbs, Button, Card, CardActions, CardContent, CardHeader, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Link, ListItemText, MenuItem, Select, Stack, TextField, Typography} from "@mui/material"
+import {
+  Backdrop,
+  Breadcrumbs,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  CardHeader,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  Link,
+  ListItemText,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material"
 import styles from "../../../styles/events.module.css"
 import {LoadingButton} from "@mui/lab"
 import useUtilityCircuit from "../../../composables/useUtilityCircuit";
@@ -31,8 +53,9 @@ export default function Event () {
 
   const {address} = useWallet()
   const {waitForCondition} = useWait()
+  const {createUtilityProof} = useUtilityCircuit()
 
-  const {load} = useLoadEffect(async () => {
+  const {loading, load} = useLoadEffect(async () => {
     if (!address) {
       return
     }
@@ -75,10 +98,21 @@ export default function Event () {
     try {
       const token = eligibleTokens[selectedTokenIndex]
 
-      const {createUtilityProof} = useUtilityCircuit()
       console.log('creating registration proof')
       const registrationProof = await createUtilityProof(id, tokens, token, 1)
       console.log('registration proof created')
+
+      const registrationValidationResponse = await fetch(`/api/events/${id}/validate-registration`, {
+        method: "POST",
+        body: JSON.stringify(registrationProof)
+      })
+
+      const registrationValidation = await registrationValidationResponse.json();
+      if (!registrationValidation.valid && registrationValidation.error.includes('DuplicateRegistration')) {
+        window.localStorage.setItem(`${id}-${token.collection}-${token.token}-registration`, "true");
+        setRegistrationDone(true)
+        return
+      }
 
       const registerResponse = await fetch(`/api/events/${id}/register`, {
         method: "POST",
@@ -108,7 +142,6 @@ export default function Event () {
     try {
       const selectedToken = eligibleTokens[selectedTokenIndex]
 
-      const {createUtilityProof} = useUtilityCircuit()
       console.log('creating entrance proof')
       const entranceProof = await createUtilityProof(id, tokens, selectedToken, 2)
       console.log('entrance proof created')
@@ -197,6 +230,10 @@ export default function Event () {
 
   return (
     <div className={styles.main}>
+      <Backdrop open={loading}>
+        <CircularProgress />
+      </Backdrop>
+
       <Breadcrumbs>
         <Link underline="hover" color="inherit" href="/">Home</Link>
         <Link underline="hover" color="inherit" href="/events">Events</Link>

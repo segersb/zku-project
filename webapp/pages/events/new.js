@@ -48,7 +48,7 @@ export default function NewEvent () {
     } else {
       setShowChainMessage(false)
     }
-  })
+  }, [publicRuntimeConfig.eventsChainId, chainId])
 
   useEffect(() => {
     if (Number(publicRuntimeConfig.eventsChainId) !== chainId) {
@@ -61,7 +61,7 @@ export default function NewEvent () {
       return setCreateEventDisabled(true)
     }
     setCreateEventDisabled(false)
-  })
+  }, [publicRuntimeConfig.eventsChainId, chainId, name, tokens.length])
 
   useEffect(() => {
     if (addTab === 1 || addTab === 2) {
@@ -77,7 +77,7 @@ export default function NewEvent () {
     }
 
     setAddTokenDisabled(false)
-  })
+  }, [addTab, fromToken, toToken])
 
   const createEvent = async () => {
     setCreateEventLoading(true)
@@ -116,7 +116,7 @@ export default function NewEvent () {
       const events = new ethers.Contract(publicRuntimeConfig.eventsContract, Events.abi, signer)
 
       await events.createEvent(id, uri, tokens.length, snapshotTree.root, {
-        value: weiPrice,
+        value: `${weiPrice}`,
         gasLimit: 250000
       })
 
@@ -225,9 +225,9 @@ export default function NewEvent () {
               </Typography>
             </div>
             <Tabs value={addTab} onChange={(e, v) => setAddTab(v)} sx={{marginBottom: 2}}>
-              <Tab label="Collection" disabled={addTokenLoading}/>
-              <Tab label="Token range" disabled={addTokenLoading}/>
-              <Tab label="Token" disabled={addTokenLoading}/>
+              <Tab label="Collection" disabled={addTokenLoading || createEventLoading}/>
+              <Tab label="Token range" disabled={addTokenLoading || createEventLoading}/>
+              <Tab label="Token" disabled={addTokenLoading || createEventLoading}/>
             </Tabs>
             <TextField
               label="Collection"
@@ -235,7 +235,7 @@ export default function NewEvent () {
               onInput={e => setCollection(e.target.value)}
               fullWidth={true}
               autoComplete="off"
-              disabled={addTokenLoading}
+              disabled={addTokenLoading || createEventLoading}
             />
             <div hidden={addTab !== 1}>
               <TextField
@@ -245,7 +245,7 @@ export default function NewEvent () {
                 fullWidth={true}
                 autoComplete="off"
                 sx={{marginTop: 2}}
-                disabled={addTokenLoading}
+                disabled={addTokenLoading || createEventLoading}
               />
               <TextField
                 label="To token ID"
@@ -254,7 +254,7 @@ export default function NewEvent () {
                 fullWidth={true}
                 autoComplete="off"
                 sx={{marginTop: 2}}
-                disabled={addTokenLoading}
+                disabled={addTokenLoading || createEventLoading}
               />
             </div>
             <div hidden={addTab !== 2}>
@@ -265,7 +265,7 @@ export default function NewEvent () {
                 fullWidth={true}
                 autoComplete="off"
                 sx={{marginTop: 2}}
-                disabled={addTokenLoading}
+                disabled={addTokenLoading || createEventLoading}
               />
             </div>
           </CardContent>
@@ -274,11 +274,18 @@ export default function NewEvent () {
               variant="outlined"
               onClick={addTokens}
               loading={addTokenLoading}
-              disabled={addTokenDisabled}
+              disabled={addTokenDisabled || createEventLoading}
             >
               Add
             </LoadingButton>
-            <Button variant="outlined" color="error" onClick={clearTokens} disabled={addTokenLoading}>Clear</Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={clearTokens}
+              disabled={addTokenLoading || createEventLoading}
+            >
+              Clear
+            </Button>
           </CardActions>
         </Card>
 

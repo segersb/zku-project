@@ -1,6 +1,6 @@
 import LRU from 'lru-cache'
 
-export default function useCachedIpfs (cacheSize) {
+export default function cachedIpfs (cacheSize) {
   const cache = new LRU({max: cacheSize})
 
   async function getJsonContent (cid) {
