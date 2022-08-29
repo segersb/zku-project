@@ -12,6 +12,7 @@ export default function Home() {
     if (connected) {
       const initRoute = window.localStorage.getItem('init-route');
       if (initRoute) {
+        window.localStorage.removeItem('init-route');
         router.push(initRoute).catch(console.error)
       } else {
         router.push('user').catch(console.error)

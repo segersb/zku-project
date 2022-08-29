@@ -5,15 +5,6 @@ require("hardhat-gas-reporter")
 require('dotenv').config()
 const {task, types} = require("hardhat/config")
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners()
-  for (const account of accounts) {
-    console.log(account.address)
-  }
-})
-
 task("deploy:events", "Deploy the Events contract")
   .addOptionalParam("logs", "Print the logs", true, types.boolean)
   .setAction(async ({logs}, {ethers}) => {
@@ -24,9 +15,15 @@ task("deploy:events", "Deploy the Events contract")
     return events
   })
 
-
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
+task("deploy:polls", "Deploy the Polls contract")
+  .addOptionalParam("logs", "Print the logs", true, types.boolean)
+  .setAction(async ({logs}, {ethers}) => {
+    const Polls = await ethers.getContractFactory("Polls")
+    const polls = await Polls.deploy()
+    await polls.deployed()
+    logs && console.log(`Polls contract has been deployed to: ${polls.address}`)
+    return polls
+  })
 
 /**
  * @type import('hardhat/config').HardhatUserConfig

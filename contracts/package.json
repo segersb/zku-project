@@ -5,8 +5,11 @@
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
     "hardhat-node": "npx hardhat node",
-    "deploy:events:local": "hardhat deploy:events --network localhost",
-    "deploy:events:goerli": "hardhat deploy:events --network goerli"
+    "deploy:local:events": "hardhat deploy:events --network localhost",
+    "deploy:local:polls": "hardhat deploy:polls --network localhost",
+    "deploy:local": "yarn deploy:local:events && yarn deploy:local:polls",
+    "deploy:goerli:events": "hardhat deploy:events --network goerli",
+    "deploy:goerli:polls": "hardhat deploy:polls --network goerli"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.1.0",

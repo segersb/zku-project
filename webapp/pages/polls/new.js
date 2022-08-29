@@ -1,27 +1,28 @@
 import {useRouter} from "next/router";
 import {useEffect, useState} from "react";
-import styles from "../../styles/events.module.css";
-import {Alert, Breadcrumbs, Button, Card, CardActions, CardContent, Link, NoSsr, Stack, Tab, Tabs, TextField, Typography} from "@mui/material";
+import styles from "../../styles/polls.module.css";
+import {Alert, Breadcrumbs, Button, Card, CardActions, CardContent, Link, NoSsr, Slider, Stack, Tab, Tabs, TextField, Typography} from "@mui/material";
 import {ethers} from "ethers";
 import {DateTimePicker, LocalizationProvider} from "@mui/x-date-pickers";
 import {AdapterMoment} from '@mui/x-date-pickers/AdapterMoment';
 import moment from "moment-timezone";
 import {LoadingButton} from "@mui/lab";
 import getConfig from "next/config";
-import Events from "../../public/Events.json";
+import Polls from "../../public/Polls.json";
 import {buildPoseidon} from "circomlibjs"
 import {IncrementalMerkleTree} from '@zk-kit/incremental-merkle-tree'
 import {v4 as uuid} from 'uuid';
 import useWait from "../../composables/useWait";
 import useWallet from "../../composables/useWallet";
 
-export default function NewEvent () {
+export default function NewPoll () {
   const router = useRouter()
 
   const [addTab, setAddTab] = useState(0)
 
   const [name, setName] = useState('')
   const [snapshotTime, setSnapshotTime] = useState(moment.utc())
+  const [voteOptions, setVoteOptions] = useState(2)
   const [snapshotTimeDisabled, setSnapshotTimeDisabled] = useState(false)
   const [tokens, setTokens] = useState([])
   const [collection, setCollection] = useState('')
@@ -29,12 +30,13 @@ export default function NewEvent () {
   const [toToken, setToToken] = useState('')
   const [price, setPrice] = useState(0)
   const [weiPrice, setWeiPrice] = useState(0)
+  const [voteOptionNames, setVoteOptionNames] = useState(['', '', '', '', '', '', '', '', '', ''])
 
   const [addTokenLoading, setAddTokenLoading] = useState(false)
   const [addTokenDisabled, setAddTokenDisabled] = useState(true)
 
-  const [createEventLoading, setCreateEventLoading] = useState(false)
-  const [createEventDisabled, setCreateEventDisabled] = useState(true)
+  const [createPollLoading, setCreatePollLoading] = useState(false)
+  const [createPollDisabled, setCreatePollDisabled] = useState(true)
 
   const [showChainMessage, setShowChainMessage] = useState(false)
   const {publicRuntimeConfig} = getConfig()
@@ -52,15 +54,18 @@ export default function NewEvent () {
 
   useEffect(() => {
     if (Number(publicRuntimeConfig.chainId) !== chainId) {
-      return setCreateEventDisabled(true)
+      return setCreatePollDisabled(true)
     }
     if (name.trim().length === 0) {
-      return setCreateEventDisabled(true)
+      return setCreatePollDisabled(true)
     }
     if (tokens.length === 0) {
-      return setCreateEventDisabled(true)
+      return setCreatePollDisabled(true)
     }
-    setCreateEventDisabled(false)
+    if (voteOptions < 2) {
+      return setCreatePollDisabled(true)
+    }
+    setCreatePollDisabled(false)
   }, [publicRuntimeConfig.chainId, chainId, name, tokens.length])
 
   useEffect(() => {
@@ -79,8 +84,8 @@ export default function NewEvent () {
     setAddTokenDisabled(false)
   }, [addTab, fromToken, toToken])
 
-  const createEvent = async () => {
-    setCreateEventLoading(true)
+  const createPoll = async () => {
+    setCreatePollLoading(true)
 
     try {
       const id = `0x${uuid().toString().replaceAll('-', '')}`
@@ -96,12 +101,13 @@ export default function NewEvent () {
         snapshotTree.insert(poseidon.F.toString(poseidon([leafCollection, leafToken1, leafToken2, leafAddress])))
       })
 
-      const publishResponse = await fetch("/api/events/publish", {
+      const publishResponse = await fetch("/api/polls/publish", {
         method: "POST",
         body: JSON.stringify({
           id,
           name,
-          tokens
+          tokens,
+          voteOptionNames,
         })
       })
 
@@ -113,21 +119,21 @@ export default function NewEvent () {
       const {uri} = await publishResponse.json()
       const provider = new ethers.providers.Web3Provider(window.ethereum)
       const signer = provider.getSigner()
-      const events = new ethers.Contract(publicRuntimeConfig.eventsContract, Events.abi, signer)
+      const polls = new ethers.Contract(publicRuntimeConfig.pollsContract, Polls.abi, signer)
 
-      await events.createEvent(id, uri, tokens.length, snapshotTree.root, {
+      await polls.createPoll(id, uri, tokens.length, snapshotTree.root, voteOptions, {
         value: `${weiPrice}`,
         gasLimit: 250000
       })
 
       await waitForCondition(5000, 120, async () => {
-        const eventResponse = await fetch(`/api/events/${id}`)
-        return eventResponse.ok
+        const pollResponse = await fetch(`/api/polls/${id}`)
+        return pollResponse.ok
       })
 
-      await router.push(`/events/${id}`)
+      await router.push(`/polls/${id}`)
     } finally {
-      setCreateEventLoading(false)
+      setCreatePollLoading(false)
     }
   }
 
@@ -161,7 +167,7 @@ export default function NewEvent () {
       const distinctTokens = [...new Map(updateTokens.map(updateToken => [`${updateToken.collection}${updateToken.token}`, updateToken])).values()];
       setTokens(distinctTokens)
 
-      const unitPriceResponse = await fetch("/api/events/unit-price")
+      const unitPriceResponse = await fetch("/api/polls/unit-price")
       const {unitPrice} = await unitPriceResponse.json()
       setPrice(Number((distinctTokens.length * unitPrice / 1000000000000000000).toFixed(6)))
       setWeiPrice(distinctTokens.length * unitPrice)
@@ -187,12 +193,12 @@ export default function NewEvent () {
 
       <Breadcrumbs>
         <Link underline="hover" color="inherit" href="/">Home</Link>
-        <Link underline="hover" color="inherit" href="/events">Events</Link>
+        <Link underline="hover" color="inherit" href="/polls">Polls</Link>
         <Typography color="text.primary">New</Typography>
       </Breadcrumbs>
 
       <Typography gutterBottom variant="h2" component="div">
-        New event
+        New poll
       </Typography>
       <Stack spacing={2} sx={{paddingX: 1, width: '100%', maxWidth: 500}}>
         <TextField
@@ -225,9 +231,9 @@ export default function NewEvent () {
               </Typography>
             </div>
             <Tabs value={addTab} onChange={(e, v) => setAddTab(v)} sx={{marginBottom: 2}}>
-              <Tab label="Collection" disabled={addTokenLoading || createEventLoading}/>
-              <Tab label="Token range" disabled={addTokenLoading || createEventLoading}/>
-              <Tab label="Token" disabled={addTokenLoading || createEventLoading}/>
+              <Tab label="Collection" disabled={addTokenLoading || createPollLoading}/>
+              <Tab label="Token range" disabled={addTokenLoading || createPollLoading}/>
+              <Tab label="Token" disabled={addTokenLoading || createPollLoading}/>
             </Tabs>
             <TextField
               label="Collection"
@@ -235,7 +241,7 @@ export default function NewEvent () {
               onInput={e => setCollection(e.target.value)}
               fullWidth={true}
               autoComplete="off"
-              disabled={addTokenLoading || createEventLoading}
+              disabled={addTokenLoading || createPollLoading}
             />
             <div hidden={addTab !== 1}>
               <TextField
@@ -245,7 +251,7 @@ export default function NewEvent () {
                 fullWidth={true}
                 autoComplete="off"
                 sx={{marginTop: 2}}
-                disabled={addTokenLoading || createEventLoading}
+                disabled={addTokenLoading || createPollLoading}
               />
               <TextField
                 label="To token ID"
@@ -254,7 +260,7 @@ export default function NewEvent () {
                 fullWidth={true}
                 autoComplete="off"
                 sx={{marginTop: 2}}
-                disabled={addTokenLoading || createEventLoading}
+                disabled={addTokenLoading || createPollLoading}
               />
             </div>
             <div hidden={addTab !== 2}>
@@ -265,7 +271,7 @@ export default function NewEvent () {
                 fullWidth={true}
                 autoComplete="off"
                 sx={{marginTop: 2}}
-                disabled={addTokenLoading || createEventLoading}
+                disabled={addTokenLoading || createPollLoading}
               />
             </div>
           </CardContent>
@@ -274,7 +280,7 @@ export default function NewEvent () {
               variant="outlined"
               onClick={addTokens}
               loading={addTokenLoading}
-              disabled={addTokenDisabled || createEventLoading}
+              disabled={addTokenDisabled || createPollLoading}
             >
               Add
             </LoadingButton>
@@ -282,12 +288,47 @@ export default function NewEvent () {
               variant="outlined"
               color="error"
               onClick={clearTokens}
-              disabled={addTokenLoading || createEventLoading}
+              disabled={addTokenLoading || createPollLoading}
             >
               Clear
             </Button>
           </CardActions>
         </Card>
+
+        <Card variant="outlined">
+          <CardContent>
+            <div>
+              <Typography gutterBottom variant="h5" component="span">
+                Options
+              </Typography>
+            </div>
+
+            <Slider
+              defaultValue={2}
+              valueLabelDisplay="auto"
+              step={1}
+              marks
+              min={2}
+              max={10}
+              onChange={(e, v) => setVoteOptions(v)}
+              disabled={createPollLoading}
+            />
+
+            {Array.from({length: voteOptions}, (_, i) => i + 1).map(voteOption =>
+              <TextField
+                key={voteOption}
+                label={`Option ${voteOption}`}
+                value={voteOptionNames[voteOption - 1]}
+                onInput={e => setVoteOptionNames(voteOptionNames.map((o, i) => i === voteOption - 1 ? e.target.value : o))}
+                fullWidth={true}
+                autoComplete="off"
+                sx={{marginTop: 2}}
+                disabled={createPollLoading}
+              />
+            )}
+          </CardContent>
+        </Card>
+
 
         <TextField
           label="Price"
@@ -297,11 +338,11 @@ export default function NewEvent () {
         />
         <LoadingButton
           variant="outlined"
-          onClick={createEvent}
-          loading={createEventLoading}
-          disabled={createEventDisabled}
+          onClick={createPoll}
+          loading={createPollLoading}
+          disabled={createPollDisabled}
         >
-          Create event
+          Create poll
         </LoadingButton>
       </Stack>
     </div>

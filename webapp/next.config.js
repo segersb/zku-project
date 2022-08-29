@@ -5,8 +5,9 @@ const nextConfig = {
 
   publicRuntimeConfig: {
     eventsContract: process.env.EVENTS_CONTRACT,
-    eventsChainId: process.env.EVENTS_CHAIN_ID,
-    eventsChainName: process.env.EVENTS_CHAIN_NAME,
+    pollsContract: process.env.POLLS_CONTRACT,
+    chainId: process.env.CHAIN_ID,
+    chainName: process.env.CHAIN_NAME,
   },
 
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {

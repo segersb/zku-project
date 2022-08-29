@@ -1,7 +1,7 @@
-import {getEventsContract} from "../../../../lib/events";
+import {getEventsContract} from "../../../../lib/contracts";
 import cachedIpfs from "../../../../lib/cachedIpfs";
 
-const ipfs = cachedIpfs(20)
+const ipfs = cachedIpfs()
 
 export default async function handler (req, res) {
   const {id} = req.query

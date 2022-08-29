@@ -1,4 +1,4 @@
-import {getEventsContract} from "../../../../lib/events";
+import {getEventsContract} from "../../../../lib/contracts";
 
 export default async function handler (req, res) {
   const {id} = req.query

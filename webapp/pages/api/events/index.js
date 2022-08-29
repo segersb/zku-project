@@ -1,4 +1,7 @@
-import {getEventsContract} from "../../../lib/events";
+import {getEventsContract} from "../../../lib/contracts";
+import cachedIpfs from "../../../lib/cachedIpfs";
+
+const ipfs = cachedIpfs()
 
 export default async function handler (req, res) {
   const {user} = req.query
@@ -12,8 +15,7 @@ export default async function handler (req, res) {
     const registrationCount = await events.getEventRegistrationCount(id)
     const entranceCount = await events.getEventEntranceCount(id)
 
-    const eventDataResponse = await fetch(`https://ipfs.io/ipfs/${cid}`)
-    const {name, tokens} = await eventDataResponse.json()
+    const {name, tokens} = await ipfs.getJsonContent(cid)
 
     responseEvents.push({
       id: id.toHexString(),

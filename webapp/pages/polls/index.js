@@ -7,7 +7,7 @@ import useLoadEffect from "../../composables/useLoadEffect";
 import useWallet from "../../composables/useWallet";
 
 export default function Events () {
-  const [events, setEvents] = useState([])
+  const [polls, setPolls] = useState([])
   const router = useRouter()
   const {address} = useWallet()
 
@@ -15,23 +15,23 @@ export default function Events () {
     if (!address) {
       return
     }
-    const eventsResponse = await fetch(`/api/events?user=${address}`)
-    const events = await eventsResponse.json()
-    setEvents(events)
+    const pollsResponse = await fetch(`/api/polls?user=${address}`)
+    const polls = await pollsResponse.json()
+    setPolls(polls)
   }, [address]);
 
   let content
-  if (events.length === 0) {
+  if (polls.length === 0) {
     content = <Typography variant="body2" color="text.secondary">
-      You haven&apos;t created any events yet
+      You haven&apos;t created any polls yet
     </Typography>
   } else {
-    content = events.map((event, i) =>
+    content = polls.map((poll, i) =>
       <Card key={i} variant="outlined" sx={{minWidth: 275, marginBottom: 2}}>
-        <CardActionArea onClick={() => router.push(`/events/${event.id}`)}>
+        <CardActionArea onClick={() => router.push(`/polls/${poll.id}`)}>
           <CardContent>
             <Typography gutterBottom variant="h5" component="div">
-              {event.name}
+              {poll.name}
             </Typography>
           </CardContent>
         </CardActionArea>
@@ -47,12 +47,12 @@ export default function Events () {
 
       <Breadcrumbs>
         <Link underline="hover" color="inherit" href="/">Home</Link>
-        <Typography color="text.primary">Events</Typography>
+        <Typography color="text.primary">Polls</Typography>
       </Breadcrumbs>
 
       <Typography gutterBottom variant="h2" component="div">
-        Events
-        <IconButton onClick={() => router.push('/events/new')}>
+        Polls
+        <IconButton onClick={() => router.push('/polls/new')}>
           <AddCircleOutlineRoundedIcon/>
         </IconButton>
       </Typography>

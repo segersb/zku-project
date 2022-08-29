@@ -19,6 +19,19 @@ export default function Home () {
           </CardContent>
         </CardActionArea>
       </Card>
+
+      <Card variant="outlined" sx={{minWidth: 275, marginTop: 2}}>
+        <CardActionArea onClick={() => router.push('/polls')}>
+          <CardContent>
+            <Typography gutterBottom variant="h5" component="div">
+              Polls
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Create polls for NFT holders
+            </Typography>
+          </CardContent>
+        </CardActionArea>
+      </Card>
     </div>
   )
 }
