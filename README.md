@@ -216,7 +216,9 @@ Returns information about a specific poll
 
 ### Webapp
 
-The webapp is created with Next.js and contains both a frontend and backend part.
+The webapp is created with Next.js and contains both a frontend and backend part.  
+The frontend uses the Material UI components library.  
+Interactions with the blockchain is done with Ethers.
 
 `dev` Runs a development server of the webapp, this assumes a local HardHat node is running with the contracts.  
 `dev:goerli` Runs a development server of the webapp, this assumes the contracts are deployed on Goerli.  
@@ -256,6 +258,7 @@ Returns a list of tokens, where each token has a collection, token and address.
 The address is the token holder at the snapshot time.
 
 ##### Event endpoints
+
 | Path                                 | Description                                                                          |
 |--------------------------------------|--------------------------------------------------------------------------------------|
 | `/events/{id}`                       | Returns a specific event                                                             |
@@ -266,3 +269,28 @@ The address is the token holder at the snapshot time.
 | `/events/unit-price`                 | Returns the unit price to pay for an event (total price is `unitPrice * eventCount`) |
 | `/events/publish`                    | Publishes an event to IPFS containing `id`, `name` and `tokens`                      |
 | `/events`                            | Returns the events that the given `user` has created                                 |
+
+##### Poll endpoints
+
+| Path                        | Description                                                                       |
+|-----------------------------|-----------------------------------------------------------------------------------|
+| `/polls/{id}`               | Returns a specific poll                                                           |
+| `/polls/{id}/vote`          | Takes a vote proof and sends it to the blockchain after validating it             |
+| `/polls/{id}/validate-vote` | Validates a vote proof                                                            |
+| `/polls/unit-price`         | Returns the unit price to pay for a poll (total price is `unitPrice * pollCount`) |
+| `/polls/publish`            | Publishes a poll to IPFS containing `id`, `name`, `tokens` and `voteOptionNames`  |
+| `/polls`                    | Returns the polls that the given `user` has created                               |
+
+#### Frontend (Page routes)
+
+| Path                 | Description                                                                                           |
+|----------------------|-------------------------------------------------------------------------------------------------------|
+| `/`                  | Index page containing the connect button, users are redirected here when there is no ethers provider  |
+| `/user`              | Home page for users that are connected                                                                |
+| `/events`            | Lists all events created by the user                                                                  |
+| `/events/new`        | Page for creating new events                                                                          |
+| `/events/{id}`       | Page for a specific event, this is where users register for an event and create their entrance ticket |
+| `/events/{id}/enter` | Page where an entrance QR code links to, used to confirm entrances                                    |
+| `/polls`             | Lists all polls created by the user                                                                   |
+| `/polls/new`         | Page for creating new poll                                                                            |
+| `/polls/{id}`        | Page for a specific poll, this is where users cast their vote                                         |
