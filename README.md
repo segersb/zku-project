@@ -243,6 +243,8 @@ Those files were not committed to GIT because of the size of the key.
 
 When updating contracts, copy the contract json file in the public folder.
 
+A Dockerfile is used to package the frontend in a container.
+
 #### Backend (API routes)
 
 ##### /tokens
